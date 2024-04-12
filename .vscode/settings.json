@@ -1,0 +1,7 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./inference/Cargo.toml",
+        "./inference/Cargo.toml",
+        "./inference/Cargo.toml"
+    ]
+}
