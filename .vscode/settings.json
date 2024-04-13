@@ -2,6 +2,8 @@
     "rust-analyzer.linkedProjects": [
         "./inference/Cargo.toml",
         "./inference/Cargo.toml",
-        "./inference/Cargo.toml"
+        "./inference/Cargo.toml",
+        "./inference/Cargo.toml",
+        "./inference/src/inference-documentation/Cargo.toml"
     ]
 }

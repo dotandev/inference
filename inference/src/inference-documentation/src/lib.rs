@@ -1,14 +1,18 @@
 #![warn(clippy::all, clippy::pedantic)]
 
-use std::fs;
-
-use proc_macro2::TokenTree;
-use syn::{parse_file, visit::Visit};
+use std::{
+    collections::HashMap,
+    fs,
+    io::Write,
+    path::{Path, MAIN_SEPARATOR},
+};
+use syn::{parse_file, spanned::Spanned, visit::Visit};
 use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub struct InferenceDocumentationConfig {
     pub working_directory: String,
+    pub output_directory: String,
 }
 
 impl InferenceDocumentationConfig {
@@ -28,32 +32,59 @@ impl InferenceDocumentationConfig {
             return Err("Working directory does not exist");
         }
 
-        Ok(InferenceDocumentationConfig { working_directory })
+        let output_directory = args
+            .next()
+            .unwrap_or(String::from("./inference_documentation_output"));
+        if !std::path::Path::new(&output_directory).exists() {
+            //create output_directory
+            if let Err(_) = std::fs::create_dir(&output_directory) {
+                return Err("Failed to create output directory");
+            }
+        }
+
+        Ok(InferenceDocumentationConfig {
+            working_directory,
+            output_directory,
+        })
     }
 }
 
-struct CommentVisitor {}
+struct DocstringsGrabber {
+    file_name: String,
+    item_doc_map: HashMap<String, String>,
+}
 
-impl<'ast> Visit<'ast> for CommentVisitor {
-    fn visit_item_fn(&mut self, item_fn: &'ast syn::ItemFn) {
-        for attr in &item_fn.attrs {
-            let res: syn::Expr = match attr.parse_args() {
-                Ok(lit_str) => lit_str,
-                _ => continue,                
-            };
+impl DocstringsGrabber {
+    fn save(&self, file_root_directory: &String, output_directory: &String) {
+        let inner_file_path = self
+            .file_name
+            .replace(file_root_directory, "")
+            .trim_start_matches(MAIN_SEPARATOR)
+            .to_string();
+
+        let path = Path::new(output_directory).join(inner_file_path.replace(".rs", ".md"));
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = fs::File::create(path).unwrap();
+        for (item_name, docstring) in &self.item_doc_map {
+            writeln!(file, "{}: {}", item_name, docstring).unwrap();
         }
     }
 }
 
-// fn extract_comments_from_file<P: AsRef<std::Path>>(path: P) -> Vec<String> {
-//     let content = fs::read_to_string(path).expect("Unable to read file");
-//     let syntax = parse_file(&content).expect("Unable to parse file");
-
-//     let mut visitor = CommentVisitor { comments: vec![] };
-//     visitor.visit_file(&syntax);
-
-//     visitor.comments
-// }
+impl<'ast> Visit<'ast> for DocstringsGrabber {
+    fn visit_item_fn(&mut self, item_fn: &'ast syn::ItemFn) {
+        let fn_name = item_fn.sig.ident.to_string();
+        let span_start = item_fn.span().start();
+        let span_end = item_fn.span().end();
+        self.item_doc_map.insert(
+            fn_name,
+            format!(
+                "[{}:{} - {}:{}]",
+                span_start.line, span_start.column, span_end.line, span_end.column
+            ),
+        );
+    }
+}
 
 pub fn build_inference_documentation(config: &InferenceDocumentationConfig) {
     WalkDir::new(&config.working_directory)
@@ -62,8 +93,14 @@ pub fn build_inference_documentation(config: &InferenceDocumentationConfig) {
         .filter(|entry| entry.file_type().is_file())
         .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "rs"))
         .for_each(|entry| {
+            println!("{}", entry.path().to_str().unwrap());
             let file_content = fs::read_to_string(entry.path()).unwrap();
             let rust_file = parse_file(&file_content).unwrap();
-            CommentVisitor {}.visit_file(&rust_file);
+            let mut visitor = DocstringsGrabber {
+                file_name: String::from(entry.path().to_str().unwrap()),
+                item_doc_map: HashMap::new(),
+            };
+            visitor.visit_file(&rust_file);
+            visitor.save(&config.working_directory, &config.output_directory);
         });
 }
