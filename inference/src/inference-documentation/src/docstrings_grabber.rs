@@ -33,13 +33,13 @@ impl DocstringsGrabber<'_> {
     }
 
     fn parse_file_level_docstring(&mut self) -> String {
-        let mut lines = self.file_content.lines();
+        let lines = self.file_content.lines();
         let mut docstring = String::new();
-        while let Some(line) = lines.next() {
+        for line in lines {
             if line.starts_with("//!") {
                 let mut docstring_line = line.trim_start_matches("//!").trim().to_string();
-                if docstring_line.starts_with("#") {
-                    docstring_line = format!("#{}", docstring_line);
+                if docstring_line.starts_with('#') {
+                    docstring_line = format!("#{docstring_line}");
                 }
                 docstring.push_str(docstring_line.as_str());
                 docstring.push('\n');
@@ -50,11 +50,11 @@ impl DocstringsGrabber<'_> {
         docstring
     }
 
-    fn parse_fn_docstring(&self, fn_name: String) -> String {
-        let line_number = self.fn_loc_map.get(&fn_name).unwrap().0;
+    fn parse_fn_docstring(&self, fn_name: &String) -> String {
+        let line_number = self.fn_loc_map.get(fn_name).unwrap().0;
         let mut v_docstring = Vec::new();
-        for line in self.file_content.lines().skip(line_number - 1).into_iter() {
-            if line.starts_with("fn") || !line.starts_with("/") {
+        for line in self.file_content.lines().skip(line_number - 1) {
+            if line.starts_with("fn") || !line.starts_with('/') {
                 break;
             }
             let docstring_line = line
@@ -82,9 +82,9 @@ impl DocstringsGrabber<'_> {
         let mut fn_loc_map: Vec<_> = self.fn_loc_map.iter().collect();
         fn_loc_map.sort_by(|a, b| a.1 .0.cmp(&b.1 .0));
         for (item_name, _) in fn_loc_map {
-            writeln!(file, "{}", format!("### {}", item_name.clone())).unwrap();
+            writeln!(file, "### {}", item_name.clone()).unwrap();
             writeln!(file, "---").unwrap();
-            writeln!(file, "{}", self.parse_fn_docstring(item_name.clone())).unwrap();
+            writeln!(file, "{}", self.parse_fn_docstring(item_name)).unwrap();
         }
     }
 
@@ -96,17 +96,18 @@ impl DocstringsGrabber<'_> {
 impl<'ast, 'file_content> Visit<'ast> for DocstringsGrabber<'file_content> {
     fn visit_item_fn(&mut self, item_fn: &'ast syn::ItemFn) {
         let mut fn_name = item_fn.sig.ident.to_string();
-        if self.current_mod.len() > 0 {
-            let mod_name = self.current_mod.join("::");
-            fn_name = format!("{}::{}", mod_name, fn_name);
-        } else {
+        if self.current_mod.is_empty() {
+            //TODO is this correct?
             let mod_name_from_file = self
                 .file_name
                 .split(MAIN_SEPARATOR)
                 .last()
                 .unwrap()
                 .replace(".rs", "");
-            fn_name = format!("{}::{}", mod_name_from_file, fn_name);
+            fn_name = format!("{mod_name_from_file}::{fn_name}");
+        } else {
+            let mod_name = self.current_mod.join("::");
+            fn_name = format!("{mod_name}::{fn_name}");
         }
         let span_start = item_fn.span().start();
         let span_end = item_fn.span().end();
@@ -151,7 +152,7 @@ impl<'ast, 'file_content> Visit<'ast> for DocstringsGrabber<'file_content> {
 
         if self.is_current_mod_inference_spec {
             self.inference_spec_mod.pop();
-            self.is_current_mod_inference_spec = self.inference_spec_mod.len() > 0;
+            self.is_current_mod_inference_spec = !self.inference_spec_mod.is_empty();
         } else {
             self.current_mod.pop();
         }
