@@ -407,15 +407,16 @@ fn build_function_call_expression(node: &Node, code: &[u8]) -> FunctionCallExpre
         &node.child_by_field_name("function").unwrap(),
         code,
     ));
-    let mut arguments = Vec::new();
+    let mut arguments = None;
 
-    for i in 0..node.child_by_field_name("arguments").unwrap().child_count() {
-        let child = node
-            .child_by_field_name("arguments")
-            .unwrap()
-            .child(i)
-            .unwrap();
-        arguments.push(build_expression(&child, code));
+    let mut cursor = node.walk();
+    let founded_arguments = node
+        .children_by_field_name("argument", &mut cursor)
+        .map(|segment| build_expression(&segment, code));
+    let founded_arguments: Vec<Expression> = founded_arguments.collect();
+
+    if !founded_arguments.is_empty() {
+        arguments = Some(founded_arguments);
     }
 
     FunctionCallExpression {

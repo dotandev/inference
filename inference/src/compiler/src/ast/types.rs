@@ -685,7 +685,7 @@ impl MemberAccessExpression {
 pub struct FunctionCallExpression {
     pub location: Location,
     pub function: Box<Expression>,
-    pub arguments: Vec<Expression>,
+    pub arguments: Option<Vec<Expression>>,
 }
 
 impl FunctionCallExpression {
@@ -695,7 +695,7 @@ impl FunctionCallExpression {
         end_row: usize,
         end_column: usize,
         function: Expression,
-        arguments: Vec<Expression>,
+        arguments: Option<Vec<Expression>>,
     ) -> Self {
         FunctionCallExpression {
             location: Location {
