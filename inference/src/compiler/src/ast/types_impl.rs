@@ -1,4 +1,15 @@
-use super::types::*;
+#![allow(dead_code)]
+
+use super::types::{
+    ApplyExpression, Argument, AssertExpression, AssignExpression, BinaryExpression, Block,
+    BoolLiteral, ConstantDefinition, ContextDefinition, Definition, Expression,
+    ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
+    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
+    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
+    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
+    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    UseDirective, VariableDefinitionStatement,
+};
 
 impl SourceFile {
     pub fn new(location: Location) -> Self {
@@ -130,6 +141,7 @@ impl ConstantDefinition {
 }
 
 impl FunctionDefinition {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         start_row: usize,
         start_column: usize,
@@ -334,6 +346,7 @@ impl FilterStatement {
 }
 
 impl ForStatement {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         start_row: usize,
         start_column: usize,
@@ -649,7 +662,7 @@ impl BinaryExpression {
         end_row: usize,
         end_column: usize,
         left: Expression,
-        operator: String,
+        operator: OperatorKind,
         right: Expression,
     ) -> Self {
         BinaryExpression {

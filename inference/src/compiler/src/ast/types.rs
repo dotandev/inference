@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Debug, Clone)]
 pub struct Position {
     pub row: usize,
@@ -222,10 +224,28 @@ pub struct TypeOfExpression {
 }
 
 #[derive(Debug)]
+pub enum OperatorKind {
+    Pow,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    And,
+    Or,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+#[derive(Debug)]
 pub struct BinaryExpression {
     pub location: Location,
     pub left: Box<Expression>,
-    pub operator: String,
+    pub operator: OperatorKind,
     pub right: Box<Expression>,
 }
 

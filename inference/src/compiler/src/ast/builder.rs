@@ -5,10 +5,10 @@ use crate::ast::types::{
     BoolLiteral, ConstantDefinition, ContextDefinition, Definition, Expression,
     ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
     FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
-    Location, MemberAccessExpression, NumberLiteral, ParenthesizedExpression, Position,
-    PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile, Statement,
-    StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression, UseDirective,
-    VariableDefinitionStatement,
+    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
+    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
+    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    UseDirective, VariableDefinitionStatement,
 };
 use tree_sitter::Node;
 
@@ -129,13 +129,15 @@ fn build_function_definition(node: &Node, code: &[u8]) -> FunctionDefinition {
     let mut arguments = None;
     let mut returns = None;
 
-    let mut cursor = node.walk();
-    let founded_arguments = node
-        .children_by_field_name("argument", &mut cursor)
-        .map(|segment| build_argument(&segment, code));
-    let founded_arguments: Vec<Argument> = founded_arguments.collect();
-    if !founded_arguments.is_empty() {
-        arguments = Some(founded_arguments);
+    if let Some(argument_list_node) = node.child_by_field_name("argument_list") {
+        let mut cursor = argument_list_node.walk();
+        let founded_arguments = argument_list_node
+            .children_by_field_name("argument", &mut cursor)
+            .map(|segment| build_argument(&segment, code));
+        let founded_arguments: Vec<Argument> = founded_arguments.collect();
+        if !founded_arguments.is_empty() {
+            arguments = Some(founded_arguments);
+        }
     }
 
     if let Some(returns_node) = node.child_by_field_name("returns") {
@@ -481,7 +483,25 @@ fn build_binary_expression(node: &Node, code: &[u8]) -> BinaryExpression {
         &node.child_by_field_name("left").unwrap(),
         code,
     ));
-    let operator = node.utf8_text(code).unwrap().to_string();
+
+    let operator_node = node.child_by_field_name("operator").unwrap();
+    let operator = match operator_node.kind() {
+        "pow_operator" => OperatorKind::Pow,
+        "and_operator" => OperatorKind::And,
+        "or_operator" => OperatorKind::Or,
+        "add_operator" => OperatorKind::Add,
+        "sub_operator" => OperatorKind::Sub,
+        "mul_operator" => OperatorKind::Mul,
+        "mod_operator" => OperatorKind::Mod,
+        "less_operator" => OperatorKind::Lt,
+        "less_equal_operator" => OperatorKind::Le,
+        "equals_operator" => OperatorKind::Eq,
+        "not_equals_operator" => OperatorKind::Ne,
+        "greater_equal_operator" => OperatorKind::Ge,
+        "greater_operator" => OperatorKind::Gt,
+        _ => panic!("Unexpected operator node"),
+    };
+
     let right = Box::new(build_expression(
         &node.child_by_field_name("right").unwrap(),
         code,
