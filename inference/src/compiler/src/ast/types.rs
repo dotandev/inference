@@ -147,6 +147,7 @@ pub struct VariableDefinitionStatement {
     pub name: Identifier,
     pub type_: Type,
     pub value: Option<Expression>,
+    pub is_undef: bool,
 }
 
 #[derive(Debug)]

@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 
 use super::types::{
-    VerifyExpression, Argument, AssertExpression, AssignExpression, BinaryExpression, Block,
-    BoolLiteral, ConstantDefinition, ContextDefinition, Definition, Expression,
-    ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
-    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
-    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
-    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
-    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
-    UnaryOperatorKind, UseDirective, VariableDefinitionStatement,
+    Argument, AssertExpression, AssignExpression, BinaryExpression, Block, BoolLiteral,
+    ConstantDefinition, ContextDefinition, Definition, Expression, ExpressionStatement,
+    ExternalFunctionDefinition, FilterStatement, ForStatement, FunctionCallExpression,
+    FunctionDefinition, GenericType, Identifier, IfStatement, Literal, Location,
+    MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression, Position,
+    PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile, Statement,
+    StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    UnaryOperatorKind, UseDirective, VariableDefinitionStatement, VerifyExpression,
 };
 
 impl SourceFile {
@@ -408,6 +408,7 @@ impl VariableDefinitionStatement {
         name: Identifier,
         type_: Type,
         value: Option<Expression>,
+        is_undef: bool,
     ) -> Self {
         VariableDefinitionStatement {
             location: Location {
@@ -423,6 +424,7 @@ impl VariableDefinitionStatement {
             name,
             type_,
             value,
+            is_undef,
         }
     }
 }

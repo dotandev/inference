@@ -32,8 +32,8 @@ context sort_function_context {
   }
 
   total fn preserving_count(func : sf) {
-    let a: Address;
-    let b: Address;
+    let undef a: Address;
+    let undef b: Address;
 
     filter {
       a = valid_Address(i32::all());
@@ -51,10 +51,10 @@ context sort_function_context {
   }
 
   total fn procuring_sorted(func: sf) {
-    let a: Address;
-    let b: Address;
-    let a0: Address;
-    let b0: Address;
+    let undef a: Address;
+    let undef b: Address;
+    let undef a0: Address;
+    let undef b0: Address;
 
     filter {
       a = valid_Address(i32::all());
@@ -77,10 +77,10 @@ context sort_function_context {
   }
 
   total fn no_side_effects(func : sf) {
-    let a: Address;
-    let b: Address;
+    let undef a: Address;
+    let undef b: Address;
 
-    let c0: Address;
+    let undef c0: Address;
 
     filter {
       a = valid_Address(i32::all());

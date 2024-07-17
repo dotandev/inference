@@ -321,12 +321,14 @@ fn build_variable_definition_statement(node: &Node, code: &[u8]) -> VariableDefi
     let value = node
         .child_by_field_name("value")
         .map(|n| build_expression(&n, code));
+    let is_undef = node.child_by_field_name("undef").is_some();
 
     VariableDefinitionStatement {
         location,
         name,
         type_,
         value,
+        is_undef,
     }
 }
 
