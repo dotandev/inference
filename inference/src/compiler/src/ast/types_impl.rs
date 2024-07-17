@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::types::{
-    ApplyExpression, Argument, AssertExpression, AssignExpression, BinaryExpression, Block,
+    VerifyExpression, Argument, AssertExpression, AssignExpression, BinaryExpression, Block,
     BoolLiteral, ConstantDefinition, ContextDefinition, Definition, Expression,
     ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
     FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
@@ -581,7 +581,7 @@ impl AssertExpression {
     }
 }
 
-impl ApplyExpression {
+impl VerifyExpression {
     pub fn new(
         start_row: usize,
         start_column: usize,
@@ -589,7 +589,7 @@ impl ApplyExpression {
         end_column: usize,
         function_call: FunctionCallExpression,
     ) -> Self {
-        ApplyExpression {
+        VerifyExpression {
             location: Location {
                 start: Position {
                     row: start_row,

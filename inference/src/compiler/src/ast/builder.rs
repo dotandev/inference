@@ -1,14 +1,14 @@
 #![warn(clippy::pedantic)]
 
 use crate::ast::types::{
-    ApplyExpression, Argument, AssertExpression, AssignExpression, BinaryExpression, Block,
-    BoolLiteral, ConstantDefinition, ContextDefinition, Definition, Expression,
-    ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
-    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
-    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
-    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
-    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
-    UnaryOperatorKind, UseDirective, VariableDefinitionStatement,
+    Argument, AssertExpression, AssignExpression, BinaryExpression, Block, BoolLiteral,
+    ConstantDefinition, ContextDefinition, Definition, Expression, ExpressionStatement,
+    ExternalFunctionDefinition, FilterStatement, ForStatement, FunctionCallExpression,
+    FunctionDefinition, GenericType, Identifier, IfStatement, Literal, Location,
+    MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression, Position,
+    PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile, Statement,
+    StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    UnaryOperatorKind, UseDirective, VariableDefinitionStatement, VerifyExpression,
 };
 use tree_sitter::Node;
 
@@ -356,7 +356,7 @@ fn build_expression(node: &Node, code: &[u8]) -> Expression {
             Expression::PrefixUnary(build_prefix_unary_expression(node, code))
         }
         "assert_expression" => Expression::Assert(build_assert_expression(node, code)),
-        "apply_expression" => Expression::Apply(build_apply_expression(node, code)),
+        "verify_expression" => Expression::Verify(build_verify_expression(node, code)),
         "parenthesized_expression" => {
             Expression::Parenthesized(build_parenthesized_expression(node, code))
         }
@@ -454,14 +454,14 @@ fn build_assert_expression(node: &Node, code: &[u8]) -> AssertExpression {
     }
 }
 
-fn build_apply_expression(node: &Node, code: &[u8]) -> ApplyExpression {
+fn build_verify_expression(node: &Node, code: &[u8]) -> VerifyExpression {
     let location = get_location(node);
     let function_call = Box::new(build_function_call_expression(
         &node.child(1).unwrap(),
         code,
     ));
 
-    ApplyExpression {
+    VerifyExpression {
         location,
         function_call,
     }

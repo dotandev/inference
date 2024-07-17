@@ -163,7 +163,7 @@ pub enum Expression {
     FunctionCall(FunctionCallExpression),
     PrefixUnary(PrefixUnaryExpression),
     Assert(AssertExpression),
-    Apply(ApplyExpression),
+    Verify(VerifyExpression),
     Parenthesized(ParenthesizedExpression),
     TypeOf(TypeOfExpression),
     Binary(BinaryExpression),
@@ -212,7 +212,7 @@ pub struct AssertExpression {
 }
 
 #[derive(Debug)]
-pub struct ApplyExpression {
+pub struct VerifyExpression {
     pub location: Location,
     pub function_call: Box<FunctionCallExpression>,
 }
