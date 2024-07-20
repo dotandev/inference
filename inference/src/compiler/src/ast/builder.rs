@@ -2,12 +2,12 @@
 
 use crate::ast::types::{
     Argument, AssertExpression, AssignExpression, BinaryExpression, Block, BoolLiteral,
-    ConstantDefinition, ContextDefinition, Definition, Expression, ExpressionStatement,
-    ExternalFunctionDefinition, FilterStatement, ForStatement, FunctionCallExpression,
-    FunctionDefinition, GenericType, Identifier, IfStatement, Literal, Location,
-    MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression, Position,
-    PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile, Statement,
-    StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    ConstantDefinition, ContextDefinition, Definition, EnumDefinition, Expression,
+    ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
+    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
+    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
+    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
+    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
     UnaryOperatorKind, UseDirective, VariableDefinitionStatement, VerifyExpression,
 };
 use tree_sitter::Node;
@@ -95,10 +95,32 @@ fn build_context_definition(node: &Node, code: &[u8]) -> ContextDefinition {
     }
 }
 
+fn build_enum_definition(node: &Node, code: &[u8]) -> EnumDefinition {
+    let location = get_location(node);
+    let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
+    let mut variants = Vec::new();
+
+    let mut cursor = node.walk();
+    let founded_variants = node
+        .children_by_field_name("variant", &mut cursor)
+        .map(|segment| build_identifier(&segment, code));
+    let founded_variants: Vec<Identifier> = founded_variants.collect();
+    if !founded_variants.is_empty() {
+        variants = founded_variants;
+    }
+
+    EnumDefinition {
+        location,
+        name,
+        variants,
+    }
+}
+
 fn build_definition(node: &Node, code: &[u8]) -> Option<Definition> {
     let kind = node.kind();
     match kind {
         "context_definition" => Some(Definition::Context(build_context_definition(node, code))),
+        "enum_definition" => Some(Definition::Enum(build_enum_definition(node, code))),
         "constant_definition" => Some(Definition::Constant(build_constant_definition(node, code))),
         "function_definition" => Some(Definition::Function(build_function_definition(node, code))),
         "external_function_definition" => Some(Definition::ExternalFunction(

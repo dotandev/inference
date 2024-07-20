@@ -3,6 +3,12 @@ use inference::std::collections::{ Array, Set };
 use inference::std::types::Address;
 use { sorting_function } from "./sort.rs";
 
+enum Arch {
+  WASM,
+  X86,
+  ARM
+}
+
 ///this is the sort function Inference spec
 context sort_function_context {
 

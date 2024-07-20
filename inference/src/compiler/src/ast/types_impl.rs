@@ -2,12 +2,12 @@
 
 use super::types::{
     Argument, AssertExpression, AssignExpression, BinaryExpression, Block, BoolLiteral,
-    ConstantDefinition, ContextDefinition, Definition, Expression, ExpressionStatement,
-    ExternalFunctionDefinition, FilterStatement, ForStatement, FunctionCallExpression,
-    FunctionDefinition, GenericType, Identifier, IfStatement, Literal, Location,
-    MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression, Position,
-    PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile, Statement,
-    StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
+    ConstantDefinition, ContextDefinition, Definition, EnumDefinition, Expression,
+    ExpressionStatement, ExternalFunctionDefinition, FilterStatement, ForStatement,
+    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
+    Location, MemberAccessExpression, NumberLiteral, OperatorKind, ParenthesizedExpression,
+    Position, PrefixUnaryExpression, QualifiedType, ReturnStatement, SimpleType, SourceFile,
+    Statement, StringLiteral, Type, TypeDefinition, TypeDefinitionStatement, TypeOfExpression,
     UnaryOperatorKind, UseDirective, VariableDefinitionStatement, VerifyExpression,
 };
 
@@ -79,6 +79,32 @@ impl ContextDefinition {
             },
             name,
             definitions,
+        }
+    }
+}
+
+impl EnumDefinition {
+    pub fn new(
+        start_row: usize,
+        start_column: usize,
+        end_row: usize,
+        end_column: usize,
+        name: Identifier,
+        variants: Vec<Identifier>,
+    ) -> Self {
+        EnumDefinition {
+            location: Location {
+                start: Position {
+                    row: start_row,
+                    column: start_column,
+                },
+                end: Position {
+                    row: end_row,
+                    column: end_column,
+                },
+            },
+            name,
+            variants,
         }
     }
 }
