@@ -26,14 +26,11 @@
 //!
 //! ### Tests
 //!
-//! The `test` module contains unit tests to validate the core functionality of the compiler:
-//!
-//! - `test_parse`: Tests the parsing of a `.inf` source file into an AST.
-//! - `test_wasm_to_coq`: Tests the translation of a WebAssembly (`.wasm`) file into Coq code.
-//! - `test_walrys`: Demonstrates reading a WebAssembly (`.wasm`) file using the `walrus` crate, and prints function IDs and names.
+//! The `test` suite is located in the `main_tests` module and contains tests for the main functionality
 
 mod ast;
 mod cli;
+pub(crate) mod main_tests;
 mod wasm_to_coq_translator;
 
 use ast::builder::build_ast;
@@ -58,16 +55,16 @@ fn main() {
     if args.wasm {
         wasm_to_coq(&args.path);
     } else {
-        parse_file(args.path.to_str().unwrap());
+        parse_inf_file(args.path.to_str().unwrap());
     }
 }
 
-fn parse_file(source_file_path: &str) -> ast::types::SourceFile {
+fn parse_inf_file(source_file_path: &str) -> ast::types::SourceFile {
     let text = fs::read_to_string(source_file_path).expect("Error reading source file");
-    parse(&text)
+    parse_inference(&text)
 }
 
-fn parse(source_code: &str) -> ast::types::SourceFile {
+fn parse_inference(source_code: &str) -> ast::types::SourceFile {
     let inference_language = tree_sitter_inference::language();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -126,6 +123,14 @@ fn wasm_to_coq_file(
 ) -> Result<String, String> {
     let absolute_path = path.canonicalize().unwrap();
     let bytes = std::fs::read(absolute_path).unwrap();
+    wasm_bytes_to_coq_file(&bytes, sub_path, filename)
+}
+
+fn wasm_bytes_to_coq_file(
+    bytes: &Vec<u8>,
+    sub_path: Option<&Path>,
+    filename: &String,
+) -> Result<String, String> {
     let coq = wasm_to_coq_translator::wasm_parser::translate_bytes(filename, bytes.as_slice());
 
     if let Err(e) = coq {
@@ -143,54 +148,4 @@ fn wasm_to_coq_file(
     fs::create_dir_all(target_dir).unwrap();
     std::fs::write(coq_file_path.clone(), coq.unwrap()).unwrap();
     Ok(coq_file_path.to_str().unwrap().to_owned())
-}
-
-#[allow(unused_imports)]
-mod test {
-
-    use walrus::Module;
-
-    #[test]
-    fn test_parse() {
-        let current_dir = std::env::current_dir().unwrap();
-        let path = current_dir.join("samples/example.inf");
-        let absolute_path = path.canonicalize().unwrap();
-
-        let ast = super::parse_file(absolute_path.to_str().unwrap());
-        assert!(!ast.definitions.is_empty());
-        // std::fs::write(
-        //     current_dir.join("samples/test_parse.intast"),
-        //     format!("{ast:#?}"),
-        // )
-        // .unwrap();
-    }
-
-    #[test]
-    fn test_wasm_to_coq() {
-        let current_dir = std::env::current_dir().unwrap();
-        let path = current_dir.join("samples/audio_bg.wasm");
-        let absolute_path = path.canonicalize().unwrap();
-
-        let bytes = std::fs::read(absolute_path).unwrap();
-        let mod_name = String::from("index");
-        let coq = super::wasm_to_coq_translator::wasm_parser::translate_bytes(
-            &mod_name,
-            bytes.as_slice(),
-        );
-        assert!(coq.is_ok());
-        //save to file
-        let coq_file_path = current_dir.join("samples/test_wasm_to_coq.v");
-        std::fs::write(coq_file_path, coq.unwrap()).unwrap();
-    }
-
-    #[test]
-    fn test_walrys() {
-        let current_dir = std::env::current_dir().unwrap();
-        let path = current_dir.join("samples/audio_bg.wasm");
-        let absolute_path = path.canonicalize().unwrap();
-        let module = Module::from_file(absolute_path).unwrap();
-        for func in module.funcs.iter() {
-            println!("{} : {:?}", func.id().index(), func.name);
-        }
-    }
 }
