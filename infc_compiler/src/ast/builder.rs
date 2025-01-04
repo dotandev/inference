@@ -1,47 +1,51 @@
 #![warn(clippy::pedantic)]
 
 use crate::ast::types::{
-    Argument, ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression,
-    AssumeStatement, BinaryExpression, Block, BoolLiteral, ConstantDefinition, Definition,
-    EnumDefinition, Expression, ExpressionStatement, ExternalFunctionDefinition,
-    FunctionCallExpression, FunctionDefinition, GenericType, Identifier, IfStatement, Literal,
-    Location, LoopStatement, MemberAccessExpression, OperatorKind, ParenthesizedExpression,
-    Position, PrefixUnaryExpression, ReturnStatement, SimpleType, SourceFile, SpecDefinition,
-    Statement, StringLiteral, StructDefinition, StructField, Type, TypeArray, TypeDefinition,
-    TypeDefinitionStatement, TypeQualifiedName, UnaryOperatorKind, UseDirective,
-    VariableDefinitionStatement,
+    ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression, BinaryExpression,
+    Block, BoolLiteral, BreakStatement, ConstantDefinition, Definition, EnumDefinition, Expression,
+    ExpressionStatement, ExternalFunctionDefinition, FunctionCallExpression, FunctionDefinition,
+    FunctionType, GenericType, Identifier, IfStatement, Literal, Location, LoopStatement,
+    MemberAccessExpression, NumberLiteral, OperatorKind, Parameter, ParenthesizedExpression,
+    Position, PrefixUnaryExpression, QualifiedName, ReturnStatement, SimpleType, SourceFile,
+    SpecDefinition, Statement, StringLiteral, StructDefinition, StructField, Type, TypeArray,
+    TypeDefinition, TypeDefinitionStatement, TypeQualifiedName, UnaryOperatorKind, UnitLiteral,
+    UseDirective, UzumakiExpression, VariableDefinitionStatement,
 };
 use tree_sitter::Node;
 
-use super::types::{
-    BreakStatement, ExistsStatement, ForallStatement, FunctionType, NumberLiteral, QualifiedName,
-    UniqueStatement, UnitLiteral, UzumakiExpression,
-};
+use super::types::BlockType;
 
+/// Builds the AST from the root node and source code.
+///
+/// # Panics
+///
+/// This function will panioc if the `root` node is not of type `source_file`.
+/// This function will panic if the `source_file` is malformed and a valid AST cannot be constructed.
+#[must_use]
 pub fn build_ast(root: Node, code: &[u8]) -> SourceFile {
     assert!(
         root.kind() == "source_file",
-        "Expected a root node of type {}",
-        "source_file"
+        "Expected a root node of type `source_file`"
     );
 
     let location = get_location(&root);
     let mut ast = SourceFile::new(location);
 
     for i in 0..root.child_count() {
-        let child = root.child(i).unwrap();
-        let child_kind = child.kind();
+        if let Some(child) = root.child(i) {
+            let child_kind = child.kind();
 
-        match child_kind {
-            "use_directive" => build_use_directive(&mut ast, &child, code),
-            _ => {
-                if let Some(definition) = build_definition(&child, code) {
-                    ast.add_definition(definition);
-                } else {
-                    panic!("{}", format!("Unexpected child of type {child_kind}"));
+            match child_kind {
+                "use_directive" => build_use_directive(&mut ast, &child, code),
+                _ => {
+                    if let Some(definition) = build_definition(&child, code) {
+                        ast.add_definition(definition);
+                    } else {
+                        panic!("{}", format!("Unexpected child of type {child_kind}"));
+                    }
                 }
-            }
-        };
+            };
+        }
     }
     ast
 }
@@ -203,7 +207,7 @@ fn build_function_definition(node: &Node, code: &[u8]) -> FunctionDefinition {
         let founded_arguments = argument_list_node
             .children_by_field_name("argument", &mut cursor)
             .map(|segment| build_argument(&segment, code));
-        let founded_arguments: Vec<Argument> = founded_arguments.collect();
+        let founded_arguments: Vec<Parameter> = founded_arguments.collect();
         if !founded_arguments.is_empty() {
             arguments = Some(founded_arguments);
         }
@@ -212,13 +216,12 @@ fn build_function_definition(node: &Node, code: &[u8]) -> FunctionDefinition {
     if let Some(returns_node) = node.child_by_field_name("returns") {
         returns = Some(build_type(&returns_node, code));
     }
-
     let body = build_block(&node.child_by_field_name("body").unwrap(), code);
 
     FunctionDefinition {
         location,
         name,
-        arguments,
+        parameters: arguments,
         returns,
         body,
     }
@@ -264,42 +267,63 @@ fn build_type_definition(node: &Node, code: &[u8]) -> TypeDefinition {
     }
 }
 
-fn build_argument(node: &Node, code: &[u8]) -> Argument {
+fn build_argument(node: &Node, code: &[u8]) -> Parameter {
     let location = get_location(node);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
 
-    Argument {
+    Parameter {
         location,
         name,
         type_,
     }
 }
 
-fn build_block(node: &Node, code: &[u8]) -> Block {
+fn build_block(node: &Node, code: &[u8]) -> BlockType {
     let location = get_location(node);
-    let mut statements = Vec::new();
 
-    for i in 1..node.child_count() - 1 {
-        let child = node.child(i).unwrap();
+    match node.kind() {
+        "block" => BlockType::Block(Block {
+            location,
+            statements: build_block_statements(node, code),
+        }),
+        "assume_block" => BlockType::Assume(Block {
+            location,
+            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code),
+        }),
+        "forall_block" => BlockType::Forall(Block {
+            location,
+            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code),
+        }),
+        "exists_block" => BlockType::Exists(Block {
+            location,
+            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code),
+        }),
+        "unique_block" => BlockType::Unique(Block {
+            location,
+            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code),
+        }),
+        _ => panic!("Unexpected block type: {}", node.kind()),
+    }
+}
+
+fn build_block_statements(node: &Node, code: &[u8]) -> Vec<Statement> {
+    let mut statements = Vec::new();
+    let mut cursor = node.walk();
+    for child in node.named_children(&mut cursor) {
         statements.push(build_statement(&child, code));
     }
 
-    Block {
-        location,
-        statements,
-    }
+    statements
 }
 
 fn build_statement(node: &Node, code: &[u8]) -> Statement {
     match node.kind() {
-        "block" => Statement::Block(build_block(node, code)),
+        "block" | "forall_block" | "assume_block" | "exists_block" | "unique_block" => {
+            Statement::Block(build_block(node, code))
+        }
         "expression_statement" => Statement::Expression(build_expression_statement(node, code)),
         "return_statement" => Statement::Return(build_return_statement(node, code)),
-        "assume_statement" => Statement::Assume(build_assume_statement(node, code)),
-        "forall_statement" => Statement::Forall(build_forall_statement(node, code)),
-        "exists_statement" => Statement::Exists(build_exists_statement(node, code)),
-        "unique_statement" => Statement::Unique(build_unique_statement(node, code)),
         "loop_statement" => Statement::Loop(build_loop_statement(node, code)),
         "if_statement" => Statement::If(build_if_statement(node, code)),
         "variable_definition_statement" => {
@@ -341,43 +365,12 @@ fn build_return_statement(node: &Node, code: &[u8]) -> ReturnStatement {
     }
 }
 
-fn build_assume_statement(node: &Node, code: &[u8]) -> AssumeStatement {
-    let location = get_location(node);
-    let block = build_block(&node.child(1).unwrap(), code);
-
-    AssumeStatement { location, block }
-}
-
-fn build_forall_statement(node: &Node, code: &[u8]) -> ForallStatement {
-    let location = get_location(node);
-    let block = build_block(&node.child(1).unwrap(), code);
-
-    ForallStatement { location, block }
-}
-
-fn build_exists_statement(node: &Node, code: &[u8]) -> ExistsStatement {
-    let location = get_location(node);
-    let block = build_block(&node.child(1).unwrap(), code);
-
-    ExistsStatement { location, block }
-}
-
-fn build_unique_statement(node: &Node, code: &[u8]) -> UniqueStatement {
-    let location = get_location(node);
-    let block = build_block(&node.child(1).unwrap(), code);
-
-    UniqueStatement { location, block }
-}
-
 fn build_loop_statement(node: &Node, code: &[u8]) -> LoopStatement {
     let location = get_location(node);
     let condition = node
         .child_by_field_name("condition")
         .map(|n| build_expression(&n, code));
-    let body = Box::new(build_statement(
-        &node.child_by_field_name("body").unwrap(),
-        code,
-    ));
+    let body = build_block(&node.child_by_field_name("body").unwrap(), code);
 
     LoopStatement {
         location,
@@ -456,6 +449,7 @@ fn build_expression(node: &Node, code: &[u8]) -> Expression {
             Expression::Literal(build_literal(node, code))
         }
         "uzumaki_keyword" => Expression::Uzumaki(build_uzumaki_expression(node, code)),
+        "identifier" => Expression::Identifier(build_identifier(node, code)),
         _ => Expression::Type(Box::new(build_type(node, code))),
     }
 }
@@ -671,13 +665,26 @@ fn build_string_literal(node: &Node, code: &[u8]) -> StringLiteral {
 
 fn build_number_literal(node: &Node, code: &[u8]) -> NumberLiteral {
     let location = get_location(node);
-    let value = node
-        .utf8_text(code)
-        .unwrap()
-        .parse::<i64>()
-        .unwrap_or_else(|_| panic!("Failed to parse number literal: {location}"));
+    let value = node.utf8_text(code).unwrap().to_string();
 
-    NumberLiteral { location, value }
+    //determine number literal type based on value
+    let type_ = if value.starts_with('-') {
+        Type::Simple(SimpleType {
+            location: Location::default(),
+            name: "i32".to_string(),
+        })
+    } else {
+        Type::Simple(SimpleType {
+            location: Location::default(),
+            name: "u32".to_string(),
+        })
+    };
+
+    NumberLiteral {
+        location,
+        value,
+        type_,
+    }
 }
 
 fn build_unit_literal(node: &Node, _: &[u8]) -> UnitLiteral {
@@ -747,7 +754,7 @@ fn build_generic_type(node: &Node, code: &[u8]) -> GenericType {
 
 fn build_function_type(node: &Node, code: &[u8]) -> FunctionType {
     let location = get_location(node);
-    let mut arguments = Vec::new();
+    let mut arguments = None;
     let mut cursor = node.walk();
 
     let founded_arguments = node
@@ -755,7 +762,7 @@ fn build_function_type(node: &Node, code: &[u8]) -> FunctionType {
         .map(|segment| build_type(&segment, code));
     let founded_arguments: Vec<Type> = founded_arguments.collect();
     if !founded_arguments.is_empty() {
-        arguments = founded_arguments;
+        arguments = Some(founded_arguments);
     }
 
     let returns = Box::new(build_type(
@@ -765,7 +772,7 @@ fn build_function_type(node: &Node, code: &[u8]) -> FunctionType {
 
     FunctionType {
         location,
-        arguments,
+        parameters: arguments,
         returns,
     }
 }

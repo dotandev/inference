@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 use super::types::{
-    Argument, ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression,
-    AssumeStatement, BinaryExpression, Block, BoolLiteral, BreakStatement, ConstantDefinition,
-    Definition, EnumDefinition, Expression, ExpressionStatement, ExternalFunctionDefinition,
-    FunctionCallExpression, FunctionDefinition, FunctionType, GenericType, Identifier, IfStatement,
-    Literal, Location, LoopStatement, MemberAccessExpression, NumberLiteral, OperatorKind,
+    ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression, BinaryExpression,
+    Block, BlockType, BoolLiteral, BreakStatement, ConstantDefinition, Definition, EnumDefinition,
+    Expression, ExpressionStatement, ExternalFunctionDefinition, FunctionCallExpression,
+    FunctionDefinition, FunctionType, GenericType, Identifier, IfStatement, Literal, Location,
+    LoopStatement, MemberAccessExpression, NumberLiteral, OperatorKind, Parameter,
     ParenthesizedExpression, Position, PrefixUnaryExpression, QualifiedName, ReturnStatement,
     SimpleType, SourceFile, SpecDefinition, Statement, StringLiteral, StructDefinition,
     StructField, Type, TypeArray, TypeDefinition, TypeDefinitionStatement, TypeQualifiedName,
@@ -224,9 +224,9 @@ impl FunctionDefinition {
         end_row: usize,
         end_column: usize,
         name: Identifier,
-        arguments: Option<Vec<Argument>>,
+        arguments: Option<Vec<Parameter>>,
         returns: Option<Type>,
-        body: Block,
+        body: BlockType,
     ) -> Self {
         FunctionDefinition {
             location: Location {
@@ -240,10 +240,22 @@ impl FunctionDefinition {
                 },
             },
             name,
-            arguments,
+            parameters: arguments,
             returns,
             body,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name.name
+    }
+
+    pub fn has_parameters(&self) -> bool {
+        self.parameters.is_some() && !self.parameters.as_ref().unwrap().is_empty()
+    }
+
+    pub fn is_void(&self) -> bool {
+        self.returns.is_none()
     }
 }
 
@@ -301,7 +313,7 @@ impl TypeDefinition {
     }
 }
 
-impl Argument {
+impl Parameter {
     pub fn new(
         start_row: usize,
         start_column: usize,
@@ -310,7 +322,7 @@ impl Argument {
         name: Identifier,
         type_: Type,
     ) -> Self {
-        Argument {
+        Parameter {
             location: Location {
                 start: Position {
                     row: start_row,
@@ -324,6 +336,10 @@ impl Argument {
             name,
             type_,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name.name
     }
 }
 
@@ -397,30 +413,6 @@ impl ReturnStatement {
     }
 }
 
-impl AssumeStatement {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        block: Block,
-    ) -> Self {
-        AssumeStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            block,
-        }
-    }
-}
-
 impl LoopStatement {
     #![allow(clippy::too_many_arguments)]
     pub fn new(
@@ -429,7 +421,7 @@ impl LoopStatement {
         end_row: usize,
         end_column: usize,
         condition: Option<Expression>,
-        body: Statement,
+        body: BlockType,
     ) -> Self {
         LoopStatement {
             location: Location {
@@ -443,7 +435,7 @@ impl LoopStatement {
                 },
             },
             condition,
-            body: Box::new(body),
+            body,
         }
     }
 }
@@ -472,8 +464,8 @@ impl IfStatement {
         end_row: usize,
         end_column: usize,
         condition: Expression,
-        if_arm: Block,
-        else_arm: Option<Block>,
+        if_arm: BlockType,
+        else_arm: Option<BlockType>,
     ) -> Self {
         IfStatement {
             location: Location {
@@ -521,6 +513,10 @@ impl VariableDefinitionStatement {
             value,
             is_undef,
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name.name
     }
 }
 
@@ -834,7 +830,8 @@ impl NumberLiteral {
         start_column: usize,
         end_row: usize,
         end_column: usize,
-        value: i64,
+        value: String,
+        type_: Type,
     ) -> Self {
         NumberLiteral {
             location: Location {
@@ -848,6 +845,7 @@ impl NumberLiteral {
                 },
             },
             value,
+            type_,
         }
     }
 }
@@ -908,7 +906,7 @@ impl FunctionType {
         start_column: usize,
         end_row: usize,
         end_column: usize,
-        arguments: Vec<Type>,
+        parameters: Option<Vec<Type>>,
         returns: Box<Type>,
     ) -> Self {
         FunctionType {
@@ -922,7 +920,7 @@ impl FunctionType {
                     column: end_column,
                 },
             },
-            arguments,
+            parameters,
             returns,
         }
     }

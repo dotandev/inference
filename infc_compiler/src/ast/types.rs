@@ -94,9 +94,9 @@ pub struct ConstantDefinition {
 pub struct FunctionDefinition {
     pub location: Location,
     pub name: Identifier,
-    pub arguments: Option<Vec<Argument>>,
+    pub parameters: Option<Vec<Parameter>>,
     pub returns: Option<Type>,
-    pub body: Block,
+    pub body: BlockType,
 }
 
 #[derive(Debug)]
@@ -115,7 +115,7 @@ pub struct TypeDefinition {
 }
 
 #[derive(Debug)]
-pub struct Argument {
+pub struct Parameter {
     pub location: Location,
     pub name: Identifier,
     pub type_: Type,
@@ -124,10 +124,10 @@ pub struct Argument {
 #[derive(Debug)]
 pub enum BlockType {
     Block(Block),
-    Assume(AssumeStatement),
-    Forall(ForallStatement),
-    Exists(ExistsStatement),
-    Unique(UniqueStatement),
+    Assume(Block),
+    Forall(Block),
+    Exists(Block),
+    Unique(Block),
 }
 
 #[derive(Debug)]
@@ -138,13 +138,9 @@ pub struct Block {
 
 #[derive(Debug)]
 pub enum Statement {
-    Block(Block),
+    Block(BlockType),
     Expression(ExpressionStatement),
     Return(ReturnStatement),
-    Assume(AssumeStatement),
-    Forall(ForallStatement),
-    Exists(ExistsStatement),
-    Unique(UniqueStatement),
     Loop(LoopStatement),
     Break(BreakStatement),
     If(IfStatement),
@@ -167,34 +163,10 @@ pub struct ReturnStatement {
 }
 
 #[derive(Debug)]
-pub struct AssumeStatement {
-    pub location: Location,
-    pub block: Block,
-}
-
-#[derive(Debug)]
-pub struct ForallStatement {
-    pub location: Location,
-    pub block: Block,
-}
-
-#[derive(Debug)]
-pub struct ExistsStatement {
-    pub location: Location,
-    pub block: Block,
-}
-
-#[derive(Debug)]
-pub struct UniqueStatement {
-    pub location: Location,
-    pub block: Block,
-}
-
-#[derive(Debug)]
 pub struct LoopStatement {
     pub location: Location,
     pub condition: Option<Expression>,
-    pub body: Box<Statement>,
+    pub body: BlockType,
 }
 
 #[derive(Debug)]
@@ -206,8 +178,8 @@ pub struct BreakStatement {
 pub struct IfStatement {
     pub location: Location,
     pub condition: Expression,
-    pub if_arm: Block,
-    pub else_arm: Option<Block>,
+    pub if_arm: BlockType,
+    pub else_arm: Option<BlockType>,
 }
 
 #[derive(Debug)]
@@ -360,7 +332,8 @@ pub struct StringLiteral {
 #[derive(Debug)]
 pub struct NumberLiteral {
     pub location: Location,
-    pub value: i64,
+    pub value: String,
+    pub type_: Type,
 }
 
 #[derive(Debug)]
@@ -395,7 +368,7 @@ pub struct GenericType {
 #[derive(Debug)]
 pub struct FunctionType {
     pub location: Location,
-    pub arguments: Vec<Type>,
+    pub parameters: Option<Vec<Type>>,
     pub returns: Box<Type>,
 }
 
