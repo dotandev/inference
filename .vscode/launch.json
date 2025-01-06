@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug wasm key",
             "preLaunchTask": "BuildCompiler",
-            "program": "${workspaceFolder}/inference/target/debug/compiler",
+            "program": "${workspaceFolder}/cli",
             "args": [
                 "${workspaceFolder}/test_data/wasm/",
                 "--wasm"
@@ -21,7 +21,7 @@
             "request": "launch",
             "name": "Debug rust key",
             "preLaunchTask": "BuildCompiler",
-            "program": "${workspaceFolder}/inference/target/debug/compiler",
+            "program": "${workspaceFolder}/cli",
             "args": [
                 "${workspaceFolder}/test_data/rust/lib.rs",
                 "--rust"
