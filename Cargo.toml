@@ -10,6 +10,7 @@ members = [
     "inference",
     "tests",
     "playground-server",
+    "wat-fmt",
 ]
 
 [workspace.package]
@@ -27,6 +28,7 @@ inference-wasm-coq-translator = { path = "./wasm-coq-translator", version = "0.0
 inference-wat-codegen = { path = "./wat-codegen", version = "0.0.1" }
 inference-tests = { path = "./tests", version = "0.0.1" }
 inference-playground-server = { path = "./playground-server", version = "0.0.1" }
+wat-fmt = { path = "./wat-fmt", version = "0.0.1" }
 tree-sitter = ">=0.22.6"
 tree-sitter-inference = "0.0.28"
 anyhow = "1.0.44"

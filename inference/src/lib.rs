@@ -7,7 +7,7 @@
 ///
 /// This function will panic if there is an error loading the Inference grammar.
 #[must_use]
-pub fn compile_to_wat(source_code: &str) -> String {
+pub fn compile_to_wat(source_code: &str) -> anyhow::Result<String> {
     let inference_language = tree_sitter_inference::language();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -17,7 +17,7 @@ pub fn compile_to_wat(source_code: &str) -> String {
     let code = source_code.as_bytes();
     let root_node = tree.root_node();
     let ast = inference_ast::builder::build_ast(root_node, code);
-    inference_wat_codegen::wat_generator::generate_for_source_file(&ast)
+    Ok(inference_wat_codegen::wat_generator::generate_string_for_source_file(&ast))
 }
 
 /// Converts WebAssembly Text format (WAT) to WebAssembly binary format (WASM).
@@ -48,6 +48,6 @@ pub fn wat_to_wasm(wat: &str) -> anyhow::Result<Vec<u8>> {
 ///
 /// This function will panic if the WAT string cannot be parsed.
 pub fn compile_to_wasm(source_code: &str) -> anyhow::Result<Vec<u8>> {
-    let wat = compile_to_wat(source_code);
+    let wat = compile_to_wat(source_code)?;
     wat_to_wasm(&wat)
 }

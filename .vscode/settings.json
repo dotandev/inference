@@ -6,6 +6,7 @@
         "./wasm-coq-translator/Cargo.toml",
         "./wat-codegen/Cargo.toml",
         "./tests/Cargo.toml",
-        "./playground-server/Cargo.toml"
+        "./playground-server/Cargo.toml",
+        "./wat-fmt/Cargo.toml"
     ]
 }

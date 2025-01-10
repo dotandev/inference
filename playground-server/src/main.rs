@@ -3,6 +3,8 @@ use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
 use inference::{compile_to_wat, wat_to_wasm};
 use serde::{Deserialize, Serialize};
 
+use wat_fmt::format;
+
 #[derive(Deserialize)]
 struct CompileRequest {
     code: String,
@@ -16,13 +18,24 @@ struct Response {
 }
 
 fn parse_inf_file(input: &str) -> Response {
-    let wat = compile_to_wat(input);
-    let errors = vec![];
-    let (wasm, errors) = match wat_to_wasm(&wat) {
-        Ok(wasm) => (wasm, errors),
-        Err(e) => (vec![], vec![e.to_string()]),
+    let (wat, errors) = match compile_to_wat(input) {
+        Ok(wat) => (wat, vec![]),
+        Err(e) => (String::new(), vec![e.to_string()]),
     };
-    Response { wat, wasm, errors }
+    if !wat.is_empty() {
+        let (wasm, errors) = match wat_to_wasm(&wat) {
+            Ok(wasm) => (wasm, errors),
+            Err(e) => (vec![], vec![e.to_string()]),
+        };
+        let wat = format(&wat);
+        Response { wat, wasm, errors }
+    } else {
+        Response {
+            wat: String::new(),
+            wasm: vec![],
+            errors,
+        }
+    }
 }
 
 #[post("/compile")]
