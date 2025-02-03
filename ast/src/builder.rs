@@ -21,7 +21,6 @@ use super::types::BlockType;
 ///
 /// This function will panioc if the `root` node is not of type `source_file`.
 /// This function will panic if the `source_file` is malformed and a valid AST cannot be constructed.
-/// Builds the AST from the root node and source code.
 ///
 /// # Errors
 ///

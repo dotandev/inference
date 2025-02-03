@@ -1,6 +1,4 @@
-use anyhow::Result;
-use std::io::Read;
-use wasmparser::{
+use inf_wasmparser::{
     Parser,
     Payload::{
         CodeSectionEntry, CodeSectionStart, ComponentAliasSection, ComponentCanonicalSection,
@@ -11,23 +9,22 @@ use wasmparser::{
         TableSection, TagSection, TypeSection, UnknownSection, Version,
     },
 };
+use std::io::Read;
 
-use crate::translator::{WasmModuleParseError, WasmParseData};
+use crate::translator::WasmParseData;
 
-pub fn translate_bytes(mod_name: &String, bytes: &[u8]) -> Result<String, WasmModuleParseError> {
+pub fn translate_bytes(mod_name: &str, bytes: &[u8]) -> anyhow::Result<String> {
     let mut data = Vec::new();
     let mut reader = std::io::Cursor::new(bytes);
     reader.read_to_end(&mut data).unwrap();
-    match parse(mod_name.clone(), &data) {
+    match parse(mod_name.to_string(), &data) {
         Ok(parse_data) => parse_data.translate(),
-        Err(e) => Err(WasmModuleParseError::UnsupportedOperation(
-            format!("\t{e} (module name: {mod_name})").to_string(),
-        )),
+        Err(e) => Err(anyhow::anyhow!(e.to_string())),
     }
 }
 
 #[allow(clippy::match_same_arms)]
-fn parse(mod_name: String, data: &[u8]) -> Result<WasmParseData> {
+fn parse(mod_name: String, data: &[u8]) -> anyhow::Result<WasmParseData> {
     let parser = Parser::new(0);
     let mut wasm_parse_data = WasmParseData::new(mod_name);
 
@@ -112,8 +109,8 @@ fn parse(mod_name: String, data: &[u8]) -> Result<WasmParseData> {
             ComponentImportSection(_) => { /* ... */ }
             ComponentExportSection(_) => { /* ... */ }
 
-            CustomSection(custom_section) => {
-                println!("Custom section: {custom_section:?}");
+            CustomSection(_) => {
+                // println!("Custom section: {custom_section:?}");
             }
 
             // most likely you'd return an error here
