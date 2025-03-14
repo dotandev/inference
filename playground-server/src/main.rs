@@ -95,8 +95,6 @@ async fn main() -> std::io::Result<()> {
 
 #[cfg(test)]
 mod test {
-    use std::any;
-
     use super::*;
 
     #[test]

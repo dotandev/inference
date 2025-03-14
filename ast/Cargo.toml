@@ -7,5 +7,5 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-tree-sitter = ">=0.22.6"
+tree-sitter.workspace = true
 anyhow.workspace = true

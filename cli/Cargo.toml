@@ -7,9 +7,9 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-clap = { version = "4.5.27", features = ["derive"] }
+clap = { version = "4.5.32", features = ["derive"] }
 walkdir = "2.5.0"
-tempfile = "3.16.0"
+tempfile = "3.19.0"
 anyhow.workspace = true
 tree-sitter.workspace = true
 tree-sitter-inference.workspace = true
