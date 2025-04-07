@@ -7,5 +7,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
+serde = { version = "1.0.217", features = ["derive", "rc"] }
+uuid = { version = "1.1", features = ["v4"] }
 tree-sitter.workspace = true
 anyhow.workspace = true

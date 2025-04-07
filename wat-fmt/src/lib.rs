@@ -100,6 +100,7 @@ fn indent_str(indent: usize) -> String {
     s
 }
 
+/// Returns true if the node and all its children can be printed inline.
 fn is_flat_node(node: &Node) -> bool {
     match node {
         Node::Atom(_) => true,
@@ -111,6 +112,7 @@ fn is_flat_list(nodes: &[Node]) -> bool {
     nodes.iter().all(is_flat_node)
 }
 
+/// Print node inline without extra formatting.
 fn format_node_inline(node: &Node) -> String {
     match node {
         Node::Atom(s) => s.clone(),
@@ -131,6 +133,7 @@ fn format_node_inline(node: &Node) -> String {
     }
 }
 
+/// Returns Some(inline) if the node is “flat” (only contains inline data).
 #[allow(dead_code)]
 fn format_inline(node: &Node) -> Option<String> {
     if is_flat_node(node) {
@@ -140,6 +143,7 @@ fn format_inline(node: &Node) -> Option<String> {
     }
 }
 
+/// Check for inline signature markers.
 fn is_inline_signature(node: &Node) -> bool {
     if let Node::List(children) = node {
         if let Some(Node::Atom(ref keyword)) = children.first() {
@@ -149,11 +153,9 @@ fn is_inline_signature(node: &Node) -> bool {
     false
 }
 
+/// Check whether a token looks like an opcode rather than a parameter or literal.
 fn is_opcode(token: &str) -> bool {
-    if token.starts_with('$') {
-        return false;
-    }
-    if token.starts_with('"') {
+    if token.starts_with('$') || token.starts_with('"') {
         return false;
     }
     let mut chars = token.chars();
@@ -168,18 +170,46 @@ fn is_opcode(token: &str) -> bool {
     true
 }
 
-fn format_instructions(nodes: &[Node], indent: usize) -> String {
+/// New version: handle control flow tokens (if/else/end) with proper indent changes.
+fn format_instructions(nodes: &[Node], base_indent: usize) -> String {
     let mut result = String::new();
+    let mut current_indent = base_indent;
     let mut i = 0;
     while i < nodes.len() {
         match &nodes[i] {
             Node::Atom(token) => {
-                if is_opcode(token) {
+                if token == "if" {
+                    result.push('\n');
+                    result.push_str(&indent_str(current_indent));
+                    result.push_str("if");
+                    current_indent += 1;
+                    i += 1;
+                } else if token == "else" {
+                    // Outdent to match the "if"
+                    current_indent -= 1;
+                    result.push('\n');
+                    result.push_str(&indent_str(current_indent));
+                    result.push_str("else");
+                    // indent the else body
+                    current_indent += 1;
+                    i += 1;
+                } else if token == "end" {
+                    current_indent = current_indent.saturating_sub(1);
+                    result.push('\n');
+                    result.push_str(&indent_str(current_indent));
+                    result.push_str("end");
+                    i += 1;
+                } else if is_opcode(token) {
+                    // Start a new instruction line: group arguments (non-opcodes) with this opcode.
                     let mut line = token.clone();
                     i += 1;
                     while i < nodes.len() {
                         if let Node::Atom(next_token) = &nodes[i] {
-                            if is_opcode(next_token) {
+                            if is_opcode(next_token)
+                                || next_token == "if"
+                                || next_token == "else"
+                                || next_token == "end"
+                            {
                                 break;
                             } else {
                                 line.push(' ');
@@ -191,19 +221,20 @@ fn format_instructions(nodes: &[Node], indent: usize) -> String {
                         }
                     }
                     result.push('\n');
-                    result.push_str(&indent_str(indent));
+                    result.push_str(&indent_str(current_indent));
                     result.push_str(&line);
                 } else {
+                    // For non-opcode atoms, print them on their own line.
                     result.push('\n');
-                    result.push_str(&indent_str(indent));
+                    result.push_str(&indent_str(current_indent));
                     result.push_str(token);
                     i += 1;
                 }
             }
             Node::List(_) => {
                 result.push('\n');
-                result.push_str(&indent_str(indent));
-                result.push_str(&format_node(&nodes[i], indent));
+                result.push_str(&indent_str(current_indent));
+                result.push_str(&format_node(&nodes[i], current_indent));
                 i += 1;
             }
         }
@@ -211,6 +242,7 @@ fn format_instructions(nodes: &[Node], indent: usize) -> String {
     result
 }
 
+/// Main formatter for a node.
 fn format_node(node: &Node, indent: usize) -> String {
     match node {
         Node::Atom(s) => s.clone(),
@@ -218,6 +250,7 @@ fn format_node(node: &Node, indent: usize) -> String {
             if children.is_empty() {
                 return String::from("()");
             }
+            // Special handling for “module”:
             if let Some(Node::Atom(ref ident)) = children.first() {
                 if ident == "module" {
                     let mut s = String::new();
@@ -235,23 +268,28 @@ fn format_node(node: &Node, indent: usize) -> String {
                 } else if ident == "func" {
                     let mut s = String::new();
                     s.push('(');
+                    // Always print the “func” keyword inline.
                     s.push_str(&format_node_inline(&children[0]));
                     let mut i = 1;
+                    // Inline printing for function name and inline signatures.
                     while i < children.len() {
-                        match &children[i] {
-                            Node::Atom(_) => {
-                                s.push(' ');
-                                s.push_str(&format_node_inline(&children[i]));
-                                i += 1;
+                        // If this is an atom and it looks like an opcode (i.e. an instruction),
+                        // then stop printing inline.
+                        if let Node::Atom(ref tok) = children[i] {
+                            if is_opcode(tok) {
+                                break;
                             }
-                            Node::List(_) if is_inline_signature(&children[i]) => {
-                                s.push(' ');
-                                s.push_str(&format_node_inline(&children[i]));
-                                i += 1;
-                            }
-                            _ => break,
                         }
+                        if let Node::List(_) = children[i] {
+                            if !is_inline_signature(&children[i]) {
+                                break;
+                            }
+                        }
+                        s.push(' ');
+                        s.push_str(&format_node_inline(&children[i]));
+                        i += 1;
                     }
+                    // Format the remaining nodes as instructions.
                     s.push_str(&format_instructions(&children[i..], indent + 1));
                     s.push('\n');
                     s.push_str(&indent_str(indent));
@@ -268,6 +306,7 @@ fn format_node(node: &Node, indent: usize) -> String {
                     return s;
                 }
             }
+            // For lists that are flat, use the inline formatter.
             if is_flat_list(children) {
                 format_node_inline(node)
             } else {

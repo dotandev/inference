@@ -26,7 +26,9 @@ pub fn compile_to_wat(source_code: &str) -> anyhow::Result<String> {
     let code = source_code.as_bytes();
     let root_node = tree.root_node();
     let ast = inference_ast::builder::build_ast(root_node, code)?;
-    Ok(inference_wat_codegen::wat_generator::generate_string_for_source_file(&ast))
+    let mut wat_generator = inference_wat_codegen::wat_emitter::WatEmitter::default();
+    wat_generator.add_source_file(ast);
+    Ok(wat_generator.emit())
 }
 
 /// Converts WebAssembly Text format (WAT) to WebAssembly binary format (WASM).

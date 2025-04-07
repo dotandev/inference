@@ -6,10 +6,10 @@ use crate::types::{
     ExpressionStatement, ExternalFunctionDefinition, FunctionCallExpression, FunctionDefinition,
     FunctionType, GenericType, Identifier, IfStatement, Literal, Location, LoopStatement,
     MemberAccessExpression, NumberLiteral, OperatorKind, Parameter, ParenthesizedExpression,
-    Position, PrefixUnaryExpression, QualifiedName, ReturnStatement, SimpleType, SourceFile,
-    SpecDefinition, Statement, StringLiteral, StructDefinition, StructField, Type, TypeArray,
-    TypeDefinition, TypeDefinitionStatement, TypeQualifiedName, UnaryOperatorKind, UnitLiteral,
-    UseDirective, UzumakiExpression, VariableDefinitionStatement,
+    PrefixUnaryExpression, QualifiedName, ReturnStatement, SimpleType, SourceFile, SpecDefinition,
+    Statement, StringLiteral, StructDefinition, StructField, Type, TypeArray, TypeDefinition,
+    TypeDefinitionStatement, TypeQualifiedName, UnaryOperatorKind, UnitLiteral, UseDirective,
+    UzumakiExpression, VariableDefinitionStatement,
 };
 use tree_sitter::Node;
 
@@ -31,7 +31,7 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
         "Expected a root node of type `source_file`"
     );
 
-    let location = get_location(&root);
+    let location = get_location(&root, code);
     let mut ast = SourceFile::new(location);
 
     for i in 0..root.child_count() {
@@ -54,7 +54,7 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
 }
 
 fn build_use_directive(parent: &mut SourceFile, node: &Node, code: &[u8]) {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let mut segments = None;
     let mut imported_types = None;
     let mut from = None;
@@ -81,16 +81,11 @@ fn build_use_directive(parent: &mut SourceFile, node: &Node, code: &[u8]) {
         imported_types = Some(founded_imported_types);
     }
 
-    parent.add_use_directive(UseDirective {
-        location,
-        imported_types,
-        segments,
-        from,
-    });
+    parent.add_use_directive(UseDirective::new(imported_types, segments, from, location));
 }
 
 fn build_spec_definition(node: &Node, code: &[u8]) -> SpecDefinition {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let mut definitions = Vec::new();
 
@@ -101,15 +96,11 @@ fn build_spec_definition(node: &Node, code: &[u8]) -> SpecDefinition {
         }
     }
 
-    SpecDefinition {
-        location,
-        name,
-        definitions,
-    }
+    SpecDefinition::new(name, definitions, location)
 }
 
 fn build_enum_definition(node: &Node, code: &[u8]) -> EnumDefinition {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let mut variants = Vec::new();
 
@@ -122,11 +113,7 @@ fn build_enum_definition(node: &Node, code: &[u8]) -> EnumDefinition {
         variants = founded_variants;
     }
 
-    EnumDefinition {
-        location,
-        name,
-        variants,
-    }
+    EnumDefinition::new(name, variants, location)
 }
 
 fn build_definition(node: &Node, code: &[u8]) -> anyhow::Result<Definition> {
@@ -149,7 +136,7 @@ fn build_definition(node: &Node, code: &[u8]) -> anyhow::Result<Definition> {
 }
 
 fn build_struct_definition(node: &Node, code: &[u8]) -> anyhow::Result<StructDefinition> {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("struct_name").unwrap(), code);
     let mut fields = Vec::new();
 
@@ -168,42 +155,28 @@ fn build_struct_definition(node: &Node, code: &[u8]) -> anyhow::Result<StructDef
         .map(|segment| build_function_definition(&segment, code));
     let methods: Vec<FunctionDefinition> = founded_methods.collect::<Result<Vec<_>, _>>()?;
 
-    Ok(StructDefinition {
-        location,
-        name,
-        fields,
-        methods,
-    })
+    Ok(StructDefinition::new(name, fields, methods, location))
 }
 
 fn build_struct_field(node: &Node, code: &[u8]) -> StructField {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
 
-    StructField {
-        location,
-        name,
-        type_,
-    }
+    StructField::new(name, type_, location)
 }
 
 fn build_constant_definition(node: &Node, code: &[u8]) -> ConstantDefinition {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
     let value = build_literal(&node.child_by_field_name("value").unwrap(), code);
 
-    ConstantDefinition {
-        location,
-        name,
-        type_,
-        value,
-    }
+    ConstantDefinition::new(name, type_, value, location)
 }
 
 fn build_function_definition(node: &Node, code: &[u8]) -> anyhow::Result<FunctionDefinition> {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let mut arguments = None;
     let mut returns = None;
@@ -224,19 +197,15 @@ fn build_function_definition(node: &Node, code: &[u8]) -> anyhow::Result<Functio
     }
     if let Some(body_node) = node.child_by_field_name("body") {
         let body = build_block(&body_node, code)?;
-        return Ok(FunctionDefinition {
-            location,
-            name,
-            parameters: arguments,
-            returns,
-            body,
-        });
+        return Ok(FunctionDefinition::new(
+            name, arguments, returns, body, location,
+        ));
     }
     Err(anyhow::anyhow!("Function body is missing"))
 }
 
 fn build_external_function_definition(node: &Node, code: &[u8]) -> ExternalFunctionDefinition {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let mut arguments = None;
     let mut returns = None;
@@ -255,37 +224,24 @@ fn build_external_function_definition(node: &Node, code: &[u8]) -> ExternalFunct
         returns = Some(build_type(&returns_node, code));
     }
 
-    ExternalFunctionDefinition {
-        location,
-        name,
-        arguments,
-        returns,
-    }
+    ExternalFunctionDefinition::new(name, arguments, returns, location)
 }
 
 fn build_type_definition(node: &Node, code: &[u8]) -> TypeDefinition {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
 
-    TypeDefinition {
-        location,
-        name,
-        type_,
-    }
+    TypeDefinition::new(name, type_, location)
 }
 
 fn build_argument(node: &Node, code: &[u8]) -> anyhow::Result<Parameter> {
-    let location = get_location(node);
+    let location = get_location(node, code);
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = build_identifier(&name_node, code);
         if let Some(type_node) = node.child_by_field_name("type") {
             let type_ = build_type(&type_node, code);
-            Ok(Parameter {
-                location,
-                name,
-                type_,
-            })
+            Ok(Parameter::new(location, name, type_))
         } else {
             Err(anyhow::anyhow!("Argument type is missing"))
         }
@@ -295,29 +251,28 @@ fn build_argument(node: &Node, code: &[u8]) -> anyhow::Result<Parameter> {
 }
 
 fn build_block(node: &Node, code: &[u8]) -> anyhow::Result<BlockType> {
-    let location = get_location(node);
-
+    let location = get_location(node, code);
     match node.kind() {
-        "block" => Ok(BlockType::Block(Block {
+        "block" => Ok(BlockType::Block(Block::new(
             location,
-            statements: build_block_statements(node, code)?,
-        })),
-        "assume_block" => Ok(BlockType::Assume(Block {
+            build_block_statements(node, code)?,
+        ))),
+        "assume_block" => Ok(BlockType::Assume(Block::new(
             location,
-            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
-        })),
-        "forall_block" => Ok(BlockType::Forall(Block {
+            build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
+        ))),
+        "forall_block" => Ok(BlockType::Forall(Block::new(
             location,
-            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
-        })),
-        "exists_block" => Ok(BlockType::Exists(Block {
+            build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
+        ))),
+        "exists_block" => Ok(BlockType::Exists(Block::new(
             location,
-            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
-        })),
-        "unique_block" => Ok(BlockType::Unique(Block {
+            build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
+        ))),
+        "unique_block" => Ok(BlockType::Unique(Block::new(
             location,
-            statements: build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
-        })),
+            build_block_statements(&node.child_by_field_name("body").unwrap(), code)?,
+        ))),
         _ => Err(anyhow::anyhow!("Unexpected block type: {}", node.kind())),
     }
 }
@@ -357,49 +312,39 @@ fn build_statement(node: &Node, code: &[u8]) -> anyhow::Result<Statement> {
         _ => Err(anyhow::anyhow!(
             "Unexpected statement type: {}, {}",
             node.kind(),
-            get_location(node)
+            get_location(node, code)
         )),
     }
 }
 
 fn build_expression_statement(node: &Node, code: &[u8]) -> ExpressionStatement {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = build_expression(&node.child(0).unwrap(), code);
 
-    ExpressionStatement {
-        location,
-        expression,
-    }
+    ExpressionStatement::new(location, expression)
 }
 
 fn build_return_statement(node: &Node, code: &[u8]) -> ReturnStatement {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = build_expression(&node.child_by_field_name("expression").unwrap(), code);
 
-    ReturnStatement {
-        location,
-        expression,
-    }
+    ReturnStatement::new(location, expression)
 }
 
 fn build_loop_statement(node: &Node, code: &[u8]) -> anyhow::Result<LoopStatement> {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let condition = node
         .child_by_field_name("condition")
         .map(|n| build_expression(&n, code));
     if let Some(body_block) = node.child_by_field_name("body") {
         let body = build_block(&body_block, code)?;
-        return Ok(LoopStatement {
-            location,
-            condition,
-            body,
-        });
+        return Ok(LoopStatement::new(location, condition, body));
     }
     Err(anyhow::anyhow!("Loop body is missing"))
 }
 
 fn build_if_statement(node: &Node, code: &[u8]) -> anyhow::Result<IfStatement> {
-    let location = get_location(node);
+    let location = get_location(node, code);
     if let Some(condition_node) = node.child_by_field_name("condition") {
         let condition = build_expression(&condition_node, code);
         if let Some(if_arm_node) = node.child_by_field_name("if_arm") {
@@ -408,12 +353,7 @@ fn build_if_statement(node: &Node, code: &[u8]) -> anyhow::Result<IfStatement> {
                 .child_by_field_name("else_arm")
                 .map(|n| build_block(&n, code))
                 .transpose()?;
-            return Ok(IfStatement {
-                location,
-                condition,
-                if_arm,
-                else_arm,
-            });
+            return Ok(IfStatement::new(location, condition, if_arm, else_arm));
         }
         return Err(anyhow::anyhow!("If arm is missing"));
     }
@@ -421,7 +361,7 @@ fn build_if_statement(node: &Node, code: &[u8]) -> anyhow::Result<IfStatement> {
 }
 
 fn build_variable_definition_statement(node: &Node, code: &[u8]) -> VariableDefinitionStatement {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
     let value = node
@@ -429,25 +369,15 @@ fn build_variable_definition_statement(node: &Node, code: &[u8]) -> VariableDefi
         .map(|n| build_expression(&n, code));
     let is_undef = node.child_by_field_name("undef").is_some();
 
-    VariableDefinitionStatement {
-        location,
-        name,
-        type_,
-        value,
-        is_undef,
-    }
+    VariableDefinitionStatement::new(location, name, type_, value, is_undef)
 }
 
 fn build_type_definition_statement(node: &Node, code: &[u8]) -> TypeDefinitionStatement {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let type_ = build_type(&node.child_by_field_name("type").unwrap(), code);
 
-    TypeDefinitionStatement {
-        location,
-        name,
-        type_,
-    }
+    TypeDefinitionStatement::new(location, name, type_)
 }
 
 fn build_expression(node: &Node, code: &[u8]) -> Expression {
@@ -480,7 +410,7 @@ fn build_expression(node: &Node, code: &[u8]) -> Expression {
 }
 
 fn build_assign_expression(node: &Node, code: &[u8]) -> AssignExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let left = Box::new(build_expression(
         &node.child_by_field_name("left").unwrap(),
         code,
@@ -490,80 +420,74 @@ fn build_assign_expression(node: &Node, code: &[u8]) -> AssignExpression {
         code,
     ));
 
-    AssignExpression {
-        location,
-        left,
-        right,
-    }
+    AssignExpression::new(location, left, right)
 }
 
 fn build_array_index_access_expression(node: &Node, code: &[u8]) -> ArrayIndexAccessExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let array = Box::new(build_expression(&node.named_child(0).unwrap(), code));
     let index = Box::new(build_expression(&node.named_child(1).unwrap(), code));
 
-    ArrayIndexAccessExpression {
-        location,
-        array,
-        index,
-    }
+    ArrayIndexAccessExpression::new(location, array, index)
 }
 
 fn build_member_access_expression(node: &Node, code: &[u8]) -> MemberAccessExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = Box::new(build_expression(
         &node.child_by_field_name("expression").unwrap(),
         code,
     ));
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
 
-    MemberAccessExpression {
-        location,
-        expression,
-        name,
-    }
+    MemberAccessExpression::new(location, expression, name)
 }
 
 fn build_function_call_expression(node: &Node, code: &[u8]) -> FunctionCallExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let function = Box::new(build_expression(
         &node.child_by_field_name("function").unwrap(),
         code,
     ));
-    let mut arguments = None;
-    let mut argument_name_expression_map: Vec<(Identifier, Expression)> = vec![];
+    let mut argument_name_expression_map: Vec<(Identifier, Expression)> = Vec::new();
+    let mut pending_name: Option<Identifier> = None;
+
+    // Use a TreeCursor to iterate over the node's named children in order.
     let mut cursor = node.walk();
-    let mut argument_name = None;
-    for child in node.children(&mut cursor) {
-        match child.kind() {
-            "argument_name" => {
-                argument_name = Some(build_identifier(&child, code));
-            }
-            "argument" => {
-                let argument_expression = build_expression(&child, code);
-                if let Some(name) = argument_name.take() {
-                    argument_name_expression_map.push((name, argument_expression));
-                } else {
-                    argument_name_expression_map.push((Identifier::default(), argument_expression));
+    if cursor.goto_first_child() {
+        loop {
+            let child = cursor.node();
+            if let Some(field) = cursor.field_name() {
+                match field {
+                    "argument_name" => {
+                        if let Expression::Identifier(id) = build_expression(&child, code) {
+                            pending_name = Some(id);
+                        }
+                    }
+                    "argument" => {
+                        let expr = build_expression(&child, code);
+                        let name = pending_name.take().unwrap_or_default();
+                        argument_name_expression_map.push((name, expr));
+                    }
+                    _ => {}
                 }
             }
-            _ => {}
+            if !cursor.goto_next_sibling() {
+                break;
+            }
         }
     }
 
-    if !argument_name_expression_map.is_empty() {
-        arguments = Some(argument_name_expression_map);
-    }
+    let arguments = if argument_name_expression_map.is_empty() {
+        None
+    } else {
+        Some(argument_name_expression_map)
+    };
 
-    FunctionCallExpression {
-        location,
-        function,
-        arguments,
-    }
+    FunctionCallExpression::new(location, function, arguments)
 }
 
 fn build_prefix_unary_expression(node: &Node, code: &[u8]) -> PrefixUnaryExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = Box::new(build_expression(&node.child(1).unwrap(), code));
 
     let operator_node = node.child_by_field_name("operator").unwrap();
@@ -572,40 +496,30 @@ fn build_prefix_unary_expression(node: &Node, code: &[u8]) -> PrefixUnaryExpress
         _ => panic!("Unexpected operator node"),
     };
 
-    PrefixUnaryExpression {
-        location,
-        expression,
-        operator,
-    }
+    PrefixUnaryExpression::new(location, expression, operator)
 }
 
 fn build_assert_statement(node: &Node, code: &[u8]) -> AssertStatement {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = Box::new(build_expression(&node.child(1).unwrap(), code));
 
-    AssertStatement {
-        location,
-        expression,
-    }
+    AssertStatement::new(location, expression)
 }
 
-fn build_break_statement(node: &Node, _: &[u8]) -> BreakStatement {
-    let location = get_location(node);
-    BreakStatement { location }
+fn build_break_statement(node: &Node, code: &[u8]) -> BreakStatement {
+    let location = get_location(node, code);
+    BreakStatement::new(location)
 }
 
 fn build_parenthesized_expression(node: &Node, code: &[u8]) -> ParenthesizedExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let expression = Box::new(build_expression(&node.child(1).unwrap(), code));
 
-    ParenthesizedExpression {
-        location,
-        expression,
-    }
+    ParenthesizedExpression::new(location, expression)
 }
 
 fn build_binary_expression(node: &Node, code: &[u8]) -> BinaryExpression {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let left = Box::new(build_expression(
         &node.child_by_field_name("left").unwrap(),
         code,
@@ -640,12 +554,7 @@ fn build_binary_expression(node: &Node, code: &[u8]) -> BinaryExpression {
         code,
     ));
 
-    BinaryExpression {
-        location,
-        left,
-        operator,
-        right,
-    }
+    BinaryExpression::new(location, left, operator, right)
 }
 
 fn build_literal(node: &Node, code: &[u8]) -> Literal {
@@ -660,52 +569,50 @@ fn build_literal(node: &Node, code: &[u8]) -> Literal {
 }
 
 fn build_array_literal(node: &Node, code: &[u8]) -> ArrayLiteral {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let mut elements = Vec::new();
     let mut cursor = node.walk();
     for child in node.named_children(&mut cursor) {
         elements.push(build_expression(&child, code));
     }
 
-    ArrayLiteral { location, elements }
+    ArrayLiteral::new(location, elements)
 }
 
 fn build_bool_literal(node: &Node, code: &[u8]) -> BoolLiteral {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let value = match node.utf8_text(code).unwrap() {
         "true" => true,
         "false" => false,
         _ => panic!("Unexpected boolean literal value"),
     };
 
-    BoolLiteral { location, value }
+    BoolLiteral::new(location, value)
 }
 
 fn build_string_literal(node: &Node, code: &[u8]) -> StringLiteral {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let value = node.utf8_text(code).unwrap().to_string();
 
-    StringLiteral { location, value }
+    StringLiteral::new(location, value)
 }
 
 fn build_number_literal(node: &Node, code: &[u8]) -> NumberLiteral {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let value = node.utf8_text(code).unwrap().to_string();
 
-    NumberLiteral {
+    //FIXME hack
+    NumberLiteral::new(
         location,
         value,
-        type_: Type::Simple(SimpleType {
-            location: Location::default(),
-            name: "i32".to_string(),
-        }),
-    }
+        Type::Simple(SimpleType::new(Location::default(), "i32".to_string())),
+    )
 }
 
-fn build_unit_literal(node: &Node, _: &[u8]) -> UnitLiteral {
-    let location = get_location(node);
+fn build_unit_literal(node: &Node, code: &[u8]) -> UnitLiteral {
+    let location = get_location(node, code);
 
-    UnitLiteral { location }
+    UnitLiteral::new(location)
 }
 
 fn build_type(node: &Node, code: &[u8]) -> Type {
@@ -720,35 +627,31 @@ fn build_type(node: &Node, code: &[u8]) -> Type {
         "type_fn" => Type::Function(build_function_type(node, code)),
         "identifier" => Type::Identifier(build_identifier(node, code)),
         _ => {
-            let location = get_location(node);
+            let location = get_location(node, code);
             panic!("Unexpected type: {node_kind}, {location}")
         }
     }
 }
 
 fn build_type_array(node: &Node, code: &[u8]) -> TypeArray {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let element_type = build_type(&node.child_by_field_name("type").unwrap(), code);
     let size = node
         .child_by_field_name("length")
         .map(|n| Box::new(build_expression(&n, code)));
 
-    TypeArray {
-        location,
-        element_type: Box::new(element_type),
-        size,
-    }
+    TypeArray::new(location, Box::new(element_type), size)
 }
 
 fn build_simple_type(node: &Node, code: &[u8]) -> SimpleType {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = node.utf8_text(code).unwrap().to_string();
 
-    SimpleType { location, name }
+    SimpleType::new(location, name)
 }
 
 fn build_generic_type(node: &Node, code: &[u8]) -> GenericType {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let base = build_identifier(&node.child_by_field_name("base_type").unwrap(), code);
 
     let args = node.child(1).unwrap();
@@ -760,15 +663,11 @@ fn build_generic_type(node: &Node, code: &[u8]) -> GenericType {
         .map(|segment| build_type(&segment, code));
     let parameters: Vec<Type> = types.collect();
 
-    GenericType {
-        location,
-        base,
-        parameters,
-    }
+    GenericType::new(location, base, parameters)
 }
 
 fn build_function_type(node: &Node, code: &[u8]) -> FunctionType {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let mut arguments = None;
     let mut cursor = node.walk();
 
@@ -785,59 +684,57 @@ fn build_function_type(node: &Node, code: &[u8]) -> FunctionType {
         code,
     ));
 
-    FunctionType {
-        location,
-        parameters: arguments,
-        returns,
-    }
+    FunctionType::new(location, arguments, returns)
 }
 
 fn build_type_qualified_name(node: &Node, code: &[u8]) -> TypeQualifiedName {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let alias = build_identifier(&node.child_by_field_name("alias").unwrap(), code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
 
-    TypeQualifiedName {
-        location,
-        alias,
-        name,
-    }
+    TypeQualifiedName::new(location, alias, name)
 }
 
 fn build_qualified_name(node: &Node, code: &[u8]) -> QualifiedName {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let qualifier = build_identifier(&node.child_by_field_name("qualifier").unwrap(), code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
 
-    QualifiedName {
-        location,
-        qualifier,
-        name,
-    }
+    QualifiedName::new(location, qualifier, name)
 }
 
-fn build_uzumaki_expression(node: &Node, _: &[u8]) -> UzumakiExpression {
-    let location = get_location(node);
+fn build_uzumaki_expression(node: &Node, code: &[u8]) -> UzumakiExpression {
+    let location = get_location(node, code);
 
-    UzumakiExpression { location }
+    UzumakiExpression::new(location)
 }
 
 fn build_identifier(node: &Node, code: &[u8]) -> Identifier {
-    let location = get_location(node);
+    let location = get_location(node, code);
     let name = node.utf8_text(code).unwrap().to_string();
 
-    Identifier { location, name }
+    Identifier::new(name, location)
 }
 
-fn get_location(node: &Node) -> Location {
+#[allow(clippy::cast_possible_truncation)]
+fn get_location(node: &Node, code: &[u8]) -> Location {
+    let offset_start = node.start_byte() as u32;
+    let offset_end = node.end_byte() as u32;
+    let start_position = node.start_position();
+    let end_position = node.end_position();
+    let start_line = start_position.row as u32 + 1;
+    let start_column = start_position.column as u32 + 1;
+    let end_line = end_position.row as u32 + 1;
+    let end_column = end_position.column as u32 + 1;
+    let source = node.utf8_text(code).unwrap().to_string();
+
     Location {
-        start: Position {
-            row: node.start_position().row,
-            column: node.start_position().column,
-        },
-        end: Position {
-            row: node.end_position().row,
-            column: node.end_position().column,
-        },
+        offset_start,
+        offset_end,
+        start_line,
+        start_column,
+        end_line,
+        end_column,
+        source,
     }
 }

@@ -6,15 +6,20 @@ use super::types::{
     Expression, ExpressionStatement, ExternalFunctionDefinition, FunctionCallExpression,
     FunctionDefinition, FunctionType, GenericType, Identifier, IfStatement, Literal, Location,
     LoopStatement, MemberAccessExpression, NumberLiteral, OperatorKind, Parameter,
-    ParenthesizedExpression, Position, PrefixUnaryExpression, QualifiedName, ReturnStatement,
-    SimpleType, SourceFile, SpecDefinition, Statement, StringLiteral, StructDefinition,
-    StructField, Type, TypeArray, TypeDefinition, TypeDefinitionStatement, TypeQualifiedName,
-    UnaryOperatorKind, UseDirective, VariableDefinitionStatement,
+    ParenthesizedExpression, PrefixUnaryExpression, QualifiedName, ReturnStatement, SimpleType,
+    SourceFile, SpecDefinition, Statement, StringLiteral, StructDefinition, StructField, Type,
+    TypeArray, TypeDefinition, TypeDefinitionStatement, TypeQualifiedName, UnaryOperatorKind,
+    UnitLiteral, UseDirective, UzumakiExpression, VariableDefinitionStatement,
 };
+
+fn get_node_id() -> u32 {
+    uuid::Uuid::new_v4().as_u128() as u32
+}
 
 impl SourceFile {
     pub fn new(location: Location) -> Self {
         SourceFile {
+            id: get_node_id(),
             location,
             use_directives: Vec::new(),
             definitions: Vec::new(),
@@ -32,25 +37,14 @@ impl SourceFile {
 
 impl UseDirective {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
         imported_types: Option<Vec<Identifier>>,
         segments: Option<Vec<Identifier>>,
         from: Option<String>,
+        location: Location,
     ) -> Self {
         UseDirective {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             imported_types,
             segments,
             from,
@@ -59,25 +53,10 @@ impl UseDirective {
 }
 
 impl SpecDefinition {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        definitions: Vec<Definition>,
-    ) -> Self {
+    pub fn new(name: Identifier, definitions: Vec<Definition>, location: Location) -> Self {
         SpecDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             definitions,
         }
@@ -86,25 +65,14 @@ impl SpecDefinition {
 
 impl StructDefinition {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
         name: Identifier,
         fields: Vec<StructField>,
         methods: Vec<FunctionDefinition>,
+        location: Location,
     ) -> Self {
         StructDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             fields,
             methods,
@@ -113,25 +81,10 @@ impl StructDefinition {
 }
 
 impl StructField {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        type_: Type,
-    ) -> Self {
+    pub fn new(name: Identifier, type_: Type, location: Location) -> Self {
         StructField {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
         }
@@ -139,25 +92,10 @@ impl StructField {
 }
 
 impl EnumDefinition {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        variants: Vec<Identifier>,
-    ) -> Self {
+    pub fn new(name: Identifier, variants: Vec<Identifier>, location: Location) -> Self {
         EnumDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             variants,
         }
@@ -165,50 +103,30 @@ impl EnumDefinition {
 }
 
 impl Identifier {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: String,
-    ) -> Self {
+    pub fn new(name: String, location: Location) -> Self {
         Identifier {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
         }
     }
 }
 
+impl Default for Identifier {
+    fn default() -> Self {
+        Identifier {
+            id: get_node_id(),
+            location: Location::default(),
+            name: String::new(),
+        }
+    }
+}
+
 impl ConstantDefinition {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        type_: Type,
-        value: Literal,
-    ) -> Self {
+    pub fn new(name: Identifier, type_: Type, value: Literal, location: Location) -> Self {
         ConstantDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
             value,
@@ -217,28 +135,16 @@ impl ConstantDefinition {
 }
 
 impl FunctionDefinition {
-    #![allow(clippy::too_many_arguments)]
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
         name: Identifier,
         arguments: Option<Vec<Parameter>>,
         returns: Option<Type>,
         body: BlockType,
+        location: Location,
     ) -> Self {
         FunctionDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             parameters: arguments,
             returns,
@@ -261,25 +167,14 @@ impl FunctionDefinition {
 
 impl ExternalFunctionDefinition {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
         name: Identifier,
         arguments: Option<Vec<Identifier>>,
         returns: Option<Type>,
+        location: Location,
     ) -> Self {
         ExternalFunctionDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             arguments,
             returns,
@@ -288,25 +183,10 @@ impl ExternalFunctionDefinition {
 }
 
 impl TypeDefinition {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        type_: Type,
-    ) -> Self {
+    pub fn new(name: Identifier, type_: Type, location: Location) -> Self {
         TypeDefinition {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
         }
@@ -314,25 +194,10 @@ impl TypeDefinition {
 }
 
 impl Parameter {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        type_: Type,
-    ) -> Self {
+    pub fn new(location: Location, name: Identifier, type_: Type) -> Self {
         Parameter {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
         }
@@ -344,19 +209,11 @@ impl Parameter {
 }
 
 impl Block {
-    pub fn new(start_row: usize, start_column: usize, end_row: usize, end_column: usize) -> Self {
+    pub fn new(location: Location, statements: Vec<Statement>) -> Self {
         Block {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            statements: Vec::new(),
+            id: get_node_id(),
+            location,
+            statements,
         }
     }
 
@@ -366,74 +223,30 @@ impl Block {
 }
 
 impl ExpressionStatement {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
-    ) -> Self {
+    pub fn new(location: Location, expression: Expression) -> Self {
         ExpressionStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             expression,
         }
     }
 }
 
 impl ReturnStatement {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
-    ) -> Self {
+    pub fn new(location: Location, expression: Expression) -> Self {
         ReturnStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             expression,
         }
     }
 }
 
 impl LoopStatement {
-    #![allow(clippy::too_many_arguments)]
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        condition: Option<Expression>,
-        body: BlockType,
-    ) -> Self {
+    pub fn new(location: Location, condition: Option<Expression>, body: BlockType) -> Self {
         LoopStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             condition,
             body,
         }
@@ -441,43 +254,24 @@ impl LoopStatement {
 }
 
 impl BreakStatement {
-    pub fn new(start_row: usize, start_column: usize, end_row: usize, end_column: usize) -> Self {
+    pub fn new(location: Location) -> Self {
         BreakStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
         }
     }
 }
 
 impl IfStatement {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
+        location: Location,
         condition: Expression,
         if_arm: BlockType,
         else_arm: Option<BlockType>,
     ) -> Self {
         IfStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             condition,
             if_arm,
             else_arm,
@@ -485,29 +279,17 @@ impl IfStatement {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 impl VariableDefinitionStatement {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
+        location: Location,
         name: Identifier,
         type_: Type,
         value: Option<Expression>,
         is_undef: bool,
     ) -> Self {
         VariableDefinitionStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
             value,
@@ -521,25 +303,10 @@ impl VariableDefinitionStatement {
 }
 
 impl TypeDefinitionStatement {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: Identifier,
-        type_: Type,
-    ) -> Self {
+    pub fn new(location: Location, name: Identifier, type_: Type) -> Self {
         TypeDefinitionStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
             type_,
         }
@@ -547,78 +314,33 @@ impl TypeDefinitionStatement {
 }
 
 impl AssignExpression {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        left: Expression,
-        right: Expression,
-    ) -> Self {
+    pub fn new(location: Location, left: Box<Expression>, right: Box<Expression>) -> Self {
         AssignExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            left: Box::new(left),
-            right: Box::new(right),
+            id: get_node_id(),
+            location,
+            left,
+            right,
         }
     }
 }
 
 impl ArrayIndexAccessExpression {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        array: Expression,
-        index: Expression,
-    ) -> Self {
+    pub fn new(location: Location, array: Box<Expression>, index: Box<Expression>) -> Self {
         ArrayIndexAccessExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            array: Box::new(array),
-            index: Box::new(index),
+            id: get_node_id(),
+            location,
+            array,
+            index,
         }
     }
 }
 
 impl MemberAccessExpression {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
-        name: Identifier,
-    ) -> Self {
+    pub fn new(location: Location, expression: Box<Expression>, name: Identifier) -> Self {
         MemberAccessExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            expression: Box::new(expression),
+            id: get_node_id(),
+            location,
+            expression,
             name,
         }
     }
@@ -626,25 +348,14 @@ impl MemberAccessExpression {
 
 impl FunctionCallExpression {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        function: Expression,
+        location: Location,
+        function: Box<Expression>,
         arguments: Option<Vec<(Identifier, Expression)>>,
     ) -> Self {
         FunctionCallExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            function: Box::new(function),
+            id: get_node_id(),
+            location,
+            function,
             arguments,
         }
     }
@@ -652,248 +363,130 @@ impl FunctionCallExpression {
 
 impl PrefixUnaryExpression {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
+        location: Location,
+        expression: Box<Expression>,
         operator: UnaryOperatorKind,
     ) -> Self {
         PrefixUnaryExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            expression: Box::new(expression),
+            id: get_node_id(),
+            location,
+            expression,
             operator,
         }
     }
 }
 
+impl UzumakiExpression {
+    pub fn new(location: Location) -> Self {
+        UzumakiExpression {
+            id: get_node_id(),
+            location,
+        }
+    }
+}
+
 impl AssertStatement {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
-    ) -> Self {
+    pub fn new(location: Location, expression: Box<Expression>) -> Self {
         AssertStatement {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            expression: Box::new(expression),
+            id: get_node_id(),
+            location,
+            expression,
         }
     }
 }
 
 impl ParenthesizedExpression {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        expression: Expression,
-    ) -> Self {
+    pub fn new(location: Location, expression: Box<Expression>) -> Self {
         ParenthesizedExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            expression: Box::new(expression),
+            id: get_node_id(),
+            location,
+            expression,
         }
     }
 }
 
 impl BinaryExpression {
     pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        left: Expression,
+        location: Location,
+        left: Box<Expression>,
         operator: OperatorKind,
-        right: Expression,
+        right: Box<Expression>,
     ) -> Self {
         BinaryExpression {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
-            left: Box::new(left),
+            id: get_node_id(),
+            location,
+            left,
             operator,
-            right: Box::new(right),
+            right,
         }
     }
 }
 
 impl BoolLiteral {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        value: bool,
-    ) -> Self {
+    pub fn new(location: Location, value: bool) -> Self {
         BoolLiteral {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             value,
         }
     }
 }
 
 impl ArrayLiteral {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        elements: Vec<Expression>,
-    ) -> Self {
+    pub fn new(location: Location, elements: Vec<Expression>) -> Self {
         ArrayLiteral {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             elements,
         }
     }
 }
 
 impl StringLiteral {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        value: String,
-    ) -> Self {
+    pub fn new(location: Location, value: String) -> Self {
         StringLiteral {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             value,
         }
     }
 }
 
 impl NumberLiteral {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        value: String,
-        type_: Type,
-    ) -> Self {
+    pub fn new(location: Location, value: String, type_: Type) -> Self {
         NumberLiteral {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             value,
             type_,
         }
     }
 }
 
+impl UnitLiteral {
+    pub fn new(location: Location) -> Self {
+        UnitLiteral {
+            id: get_node_id(),
+            location,
+        }
+    }
+}
+
 impl SimpleType {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        name: String,
-    ) -> Self {
+    pub fn new(location: Location, name: String) -> Self {
         SimpleType {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             name,
         }
     }
 }
 
 impl GenericType {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        base: Identifier,
-        parameters: Vec<Type>,
-    ) -> Self {
+    pub fn new(location: Location, base: Identifier, parameters: Vec<Type>) -> Self {
         GenericType {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             base,
             parameters,
         }
@@ -901,25 +494,10 @@ impl GenericType {
 }
 
 impl FunctionType {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        parameters: Option<Vec<Type>>,
-        returns: Box<Type>,
-    ) -> Self {
+    pub fn new(location: Location, parameters: Option<Vec<Type>>, returns: Box<Type>) -> Self {
         FunctionType {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             parameters,
             returns,
         }
@@ -927,25 +505,10 @@ impl FunctionType {
 }
 
 impl QualifiedName {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        qualifier: Identifier,
-        name: Identifier,
-    ) -> Self {
+    pub fn new(location: Location, qualifier: Identifier, name: Identifier) -> Self {
         QualifiedName {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             qualifier,
             name,
         }
@@ -953,25 +516,10 @@ impl QualifiedName {
 }
 
 impl TypeQualifiedName {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        alias: Identifier,
-        name: Identifier,
-    ) -> Self {
+    pub fn new(location: Location, alias: Identifier, name: Identifier) -> Self {
         TypeQualifiedName {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             alias,
             name,
         }
@@ -979,25 +527,10 @@ impl TypeQualifiedName {
 }
 
 impl TypeArray {
-    pub fn new(
-        start_row: usize,
-        start_column: usize,
-        end_row: usize,
-        end_column: usize,
-        element_type: Box<Type>,
-        size: Option<Box<Expression>>,
-    ) -> Self {
+    pub fn new(location: Location, element_type: Box<Type>, size: Option<Box<Expression>>) -> Self {
         TypeArray {
-            location: Location {
-                start: Position {
-                    row: start_row,
-                    column: start_column,
-                },
-                end: Position {
-                    row: end_row,
-                    column: end_column,
-                },
-            },
+            id: get_node_id(),
+            location,
             element_type,
             size,
         }

@@ -1,1 +1,1 @@
-pub mod wat_generator;
+pub mod wat_emitter;
