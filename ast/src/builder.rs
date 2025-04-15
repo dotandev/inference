@@ -47,7 +47,7 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
                         return Err(anyhow::anyhow!("Unexpected child of type {child_kind}"));
                     }
                 }
-            };
+            }
         }
     }
     Ok(ast)

@@ -7,7 +7,6 @@
         "./wat-codegen/Cargo.toml",
         "./tests/Cargo.toml",
         "./playground-server/Cargo.toml",
-        "./wat-fmt/Cargo.toml",
         "./wasm-fmt/Cargo.toml"
     ]
 }

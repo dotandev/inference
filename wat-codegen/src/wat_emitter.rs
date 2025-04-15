@@ -1,7 +1,5 @@
 #![warn(clippy::pedantic)]
 
-use std::collections::HashMap;
-
 use inference_ast::types::{
     AssertStatement, BinaryExpression, BlockType, Definition, Expression, FunctionCallExpression,
     FunctionDefinition, Literal, MemberAccessExpression, OperatorKind, SourceFile, SpecDefinition,
@@ -39,7 +37,7 @@ fn s_assume() -> String {
 #[derive(Debug, Clone, Default)]
 pub struct WatEmitter {
     source_files: Vec<SourceFile>,
-    functions_to_emit: HashMap<u32, Vec<String>>,
+    // functions_to_emit: HashMap<u32, Vec<String>>,
 }
 
 impl WatEmitter {
