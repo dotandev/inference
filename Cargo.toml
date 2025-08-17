@@ -33,5 +33,5 @@ inf-wasmparser = "0.0.8"
 wat-fmt = "0.0.8"
 wasm-fmt = { path = "./wasm-fmt", version = "0.0.1" }
 tree-sitter = "0.25.3"
-tree-sitter-inference = "0.0.29"
+tree-sitter-inference = "0.0.34"
 anyhow = "1.0.99"
