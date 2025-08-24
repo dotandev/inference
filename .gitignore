@@ -19,3 +19,4 @@ Cargo.lock
 *.wasm
 *.wat
 out
+test_data/**/*.json

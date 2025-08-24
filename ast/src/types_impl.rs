@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use crate::node::Location;
+use crate::{node::Location, types::TypeMemberAccessExpression};
 
 use super::types::{
     ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression, BinaryExpression,
@@ -375,6 +375,18 @@ impl MemberAccessExpression {
     #[must_use]
     pub fn new(location: Location, expression: Expression, name: Rc<Identifier>) -> Self {
         MemberAccessExpression {
+            id: get_node_id(),
+            location,
+            expression,
+            name,
+        }
+    }
+}
+
+impl TypeMemberAccessExpression {
+    #[must_use]
+    pub fn new(location: Location, expression: Expression, name: Rc<Identifier>) -> Self {
+        TypeMemberAccessExpression {
             id: get_node_id(),
             location,
             expression,

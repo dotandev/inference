@@ -1,24 +1,22 @@
 //! Definitions of functions that traverse tree-sitter CST and produce Inference AST.
 use std::rc::Rc;
+use tree_sitter::Node;
 
 use crate::{
     node::Location,
     types::{
         ArrayIndexAccessExpression, ArrayLiteral, AssertStatement, AssignExpression,
-        BinaryExpression, Block, BoolLiteral, BreakStatement, ConstantDefinition, Definition,
-        EnumDefinition, Expression, ExpressionStatement, ExternalFunctionDefinition,
+        BinaryExpression, Block, BlockType, BoolLiteral, BreakStatement, ConstantDefinition,
+        Definition, EnumDefinition, Expression, ExpressionStatement, ExternalFunctionDefinition,
         FunctionCallExpression, FunctionDefinition, FunctionType, GenericType, Identifier,
         IfStatement, Literal, LoopStatement, MemberAccessExpression, NumberLiteral, OperatorKind,
         Parameter, ParenthesizedExpression, PrefixUnaryExpression, QualifiedName, ReturnStatement,
         SimpleType, SourceFile, SpecDefinition, Statement, StringLiteral, StructDefinition,
-        StructField, Type, TypeArray, TypeDefinition, TypeDefinitionStatement, TypeQualifiedName,
-        UnaryOperatorKind, UnitLiteral, UseDirective, UzumakiExpression,
-        VariableDefinitionStatement,
+        StructField, Type, TypeArray, TypeDefinition, TypeDefinitionStatement,
+        TypeMemberAccessExpression, TypeQualifiedName, UnaryOperatorKind, UnitLiteral,
+        UseDirective, UzumakiExpression, VariableDefinitionStatement,
     },
 };
-use tree_sitter::Node;
-
-use super::types::BlockType;
 
 /// Builds the AST from the root node and source code.
 ///
@@ -45,13 +43,14 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
 
             match child_kind {
                 "use_directive" => build_use_directive(&mut ast, &child, code),
-                _ => {
-                    if let Ok(definition) = build_definition(&child, code) {
-                        ast.add_definition(definition);
-                    } else {
-                        return Err(anyhow::anyhow!("Unexpected child of type {child_kind}"));
+                _ => match build_definition(&child, code) {
+                    Ok(definition) => ast.add_definition(definition),
+                    Err(err) => {
+                        eprintln!(
+                            "Error building definition for child of type {child_kind}: {err}"
+                        );
                     }
-                }
+                },
             }
         }
     }
@@ -146,7 +145,7 @@ fn build_definition(node: &Node, code: &[u8]) -> anyhow::Result<Definition> {
 
 fn build_struct_definition(node: &Node, code: &[u8]) -> anyhow::Result<Rc<StructDefinition>> {
     let location = get_location(node, code);
-    let name = build_identifier(&node.child_by_field_name("struct_name").unwrap(), code);
+    let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     let mut fields = Vec::new();
 
     let mut cursor = node.walk();
@@ -304,6 +303,7 @@ fn build_statement(node: &Node, code: &[u8]) -> anyhow::Result<Statement> {
         "block" | "forall_block" | "assume_block" | "exists_block" | "unique_block" => {
             Ok(Statement::Block(build_block(node, code)?))
         }
+        "assign_statement" => Ok(Statement::Assign(build_assign_expression(node, code))),
         "expression_statement" => Ok(Statement::Expression(build_expression_statement(
             node, code,
         ))),
@@ -405,6 +405,9 @@ fn build_expression(node: &Node, code: &[u8]) -> Expression {
         "member_access_expression" => {
             Expression::MemberAccess(build_member_access_expression(node, code))
         }
+        "type_member_access_expression" => {
+            Expression::TypeMemberAccess(build_type_member_access_expression(node, code))
+        }
         "function_call_expression" => {
             Expression::FunctionCall(build_function_call_expression(node, code))
         }
@@ -443,6 +446,13 @@ fn build_member_access_expression(node: &Node, code: &[u8]) -> Rc<MemberAccessEx
     let expression = build_expression(&node.child_by_field_name("expression").unwrap(), code);
     let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
     Rc::new(MemberAccessExpression::new(location, expression, name))
+}
+
+fn build_type_member_access_expression(node: &Node, code: &[u8]) -> Rc<TypeMemberAccessExpression> {
+    let location = get_location(node, code);
+    let expression = build_expression(&node.child_by_field_name("expression").unwrap(), code);
+    let name = build_identifier(&node.child_by_field_name("name").unwrap(), code);
+    Rc::new(TypeMemberAccessExpression::new(location, expression, name))
 }
 
 fn build_function_call_expression(node: &Node, code: &[u8]) -> Rc<FunctionCallExpression> {
@@ -520,24 +530,24 @@ fn build_binary_expression(node: &Node, code: &[u8]) -> Rc<BinaryExpression> {
     let operator_node = node.child_by_field_name("operator").unwrap();
     let operator_kind = operator_node.kind();
     let operator = match operator_kind {
-        "pow_operator" => OperatorKind::Pow,
-        "and_operator" => OperatorKind::And,
-        "or_operator" => OperatorKind::Or,
-        "add_operator" => OperatorKind::Add,
-        "sub_operator" => OperatorKind::Sub,
-        "mul_operator" => OperatorKind::Mul,
-        "mod_operator" => OperatorKind::Mod,
-        "less_operator" => OperatorKind::Lt,
-        "less_equal_operator" => OperatorKind::Le,
-        "equals_operator" => OperatorKind::Eq,
-        "not_equals_operator" => OperatorKind::Ne,
-        "greater_equal_operator" => OperatorKind::Ge,
-        "greater_operator" => OperatorKind::Gt,
-        "shift_left_operator" => OperatorKind::Shl,
-        "shift_right_operator" => OperatorKind::Shr,
-        "bit_xor_operator" => OperatorKind::BitXor,
-        "bit_and_operator" => OperatorKind::BitAnd,
-        "bit_or_operator" => OperatorKind::BitOr,
+        "**" => OperatorKind::Pow,
+        "&&" => OperatorKind::And,
+        "||" => OperatorKind::Or,
+        "+" => OperatorKind::Add,
+        "-" => OperatorKind::Sub,
+        "*" => OperatorKind::Mul,
+        "%" => OperatorKind::Mod,
+        "<" => OperatorKind::Lt,
+        "<=" => OperatorKind::Le,
+        "==" => OperatorKind::Eq,
+        "!=" => OperatorKind::Ne,
+        ">=" => OperatorKind::Ge,
+        ">" => OperatorKind::Gt,
+        "<<" => OperatorKind::Shl,
+        ">>" => OperatorKind::Shr,
+        "^" => OperatorKind::BitXor,
+        "&" => OperatorKind::BitAnd,
+        "|" => OperatorKind::BitOr,
         _ => panic!("Unexpected operator node: {operator_kind}"),
     };
 

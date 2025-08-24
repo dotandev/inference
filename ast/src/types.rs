@@ -26,6 +26,7 @@ ast_enums! {
     }
 
     pub enum Statement {
+        Assign(Rc<AssignExpression>),
         Block(BlockType),
         Expression(Rc<ExpressionStatement>),
         Return(Rc<ReturnStatement>),
@@ -42,6 +43,7 @@ ast_enums! {
         Assign(Rc<AssignExpression>),
         ArrayIndexAccess(Rc<ArrayIndexAccessExpression>),
         MemberAccess(Rc<MemberAccessExpression>),
+        TypeMemberAccess(Rc<TypeMemberAccessExpression>),
         FunctionCall(Rc<FunctionCallExpression>),
         PrefixUnary(Rc<PrefixUnaryExpression>),
         Parenthesized(Rc<ParenthesizedExpression>),
@@ -215,6 +217,11 @@ ast_nodes! {
     }
 
     pub struct MemberAccessExpression {
+        pub expression: Expression,
+        pub name: Rc<Identifier>,
+    }
+
+    pub struct TypeMemberAccessExpression {
         pub expression: Expression,
         pub name: Rc<Identifier>,
     }
@@ -429,6 +436,12 @@ ast_nodes_impl! {
         }
     }
     impl Node for MemberAccessExpression {
+        fn children(&self) -> Vec<Box<dyn Node>> {
+            //TODO implement
+            vec![]
+        }
+    }
+    impl Node for TypeMemberAccessExpression {
         fn children(&self) -> Vec<Box<dyn Node>> {
             //TODO implement
             vec![]

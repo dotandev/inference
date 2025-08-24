@@ -77,7 +77,6 @@ fn main() {
         None => "inf",
     };
     let source_code = fs::read_to_string(&args.path).expect("Error reading source file");
-    let mod_name = args.path.file_stem().unwrap().to_str().unwrap().to_string();
     let wat = if source == "inf" {
         compile_to_wat(source_code.as_str()).unwrap()
     } else {
@@ -96,6 +95,7 @@ fn main() {
         println!("WASM generated at: {}", wasm_file_path.to_str().unwrap());
         process::exit(0);
     }
+    let mod_name = args.path.file_stem().unwrap().to_str().unwrap().to_string();
     let v = wasm_to_v(mod_name.as_str(), &wasm).unwrap();
     if generate == "v" {
         let v_file_path = output_path.join("out.v");
