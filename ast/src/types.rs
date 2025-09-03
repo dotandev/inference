@@ -3,7 +3,7 @@
 //! Defines the `Node` trait with `Location`.
 use std::rc::Rc;
 
-use crate::{ast_enum, ast_enums, ast_nodes, ast_nodes_impl, node::Node};
+use crate::{ast_enum, ast_enums, ast_nodes, ast_nodes_impl, node::Node, node_kind::NodeKind};
 
 ast_enums! {
 
@@ -15,14 +15,6 @@ ast_enums! {
         Function(Rc<FunctionDefinition>),
         ExternalFunction(Rc<ExternalFunctionDefinition>),
         Type(Rc<TypeDefinition>),
-    }
-
-    pub enum BlockType {
-        Block(Rc<Block>),
-        Assume(Rc<Block>),
-        Forall(Rc<Block>),
-        Exists(Rc<Block>),
-        Unique(Rc<Block>),
     }
 
     pub enum Statement {
@@ -70,6 +62,50 @@ ast_enums! {
         QualifiedName(Rc<QualifiedName>),
         Qualified(Rc<TypeQualifiedName>),
         Identifier(Rc<Identifier>),
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
+pub enum BlockType {
+    Block(Rc<Block>),
+    Assume(Rc<Block>),
+    Forall(Rc<Block>),
+    Exists(Rc<Block>),
+    Unique(Rc<Block>),
+}
+
+impl BlockType {
+    #[must_use]
+    pub fn id(&self) -> u32 {
+        match self {
+            BlockType::Block(b)
+            | BlockType::Assume(b)
+            | BlockType::Forall(b)
+            | BlockType::Exists(b)
+            | BlockType::Unique(b) => b.id(),
+        }
+    }
+
+    #[must_use]
+    pub fn location(&self) -> crate::node::Location {
+        match self {
+            BlockType::Block(b)
+            | BlockType::Assume(b)
+            | BlockType::Forall(b)
+            | BlockType::Exists(b)
+            | BlockType::Unique(b) => b.location(),
+        }
+    }
+
+    #[must_use]
+    pub fn children(&self) -> Vec<NodeKind> {
+        match self {
+            BlockType::Block(b)
+            | BlockType::Assume(b)
+            | BlockType::Forall(b)
+            | BlockType::Exists(b)
+            | BlockType::Unique(b) => b.children(),
+        }
     }
 }
 
@@ -304,247 +340,247 @@ ast_nodes! {
 
 ast_nodes_impl! {
     impl Node for SourceFile {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for UseDirective {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for SpecDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for StructDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for StructField {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for EnumDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for Identifier {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO revisit
             vec![]
         }
     }
     impl Node for ConstantDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for FunctionDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ExternalFunctionDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for TypeDefinition {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for Parameter {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for Block {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ExpressionStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ReturnStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for LoopStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for BreakStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO revisit
             vec![]
         }
     }
     impl Node for IfStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for VariableDefinitionStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for TypeDefinitionStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for AssignExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ArrayIndexAccessExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for MemberAccessExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for TypeMemberAccessExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for FunctionCallExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for UzumakiExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for PrefixUnaryExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for AssertStatement {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ParenthesizedExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for BinaryExpression {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for ArrayLiteral {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for BoolLiteral {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for StringLiteral {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for NumberLiteral {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for UnitLiteral {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for SimpleType {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for GenericType {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for FunctionType {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for QualifiedName {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for TypeQualifiedName {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }
     }
     impl Node for TypeArray {
-        fn children(&self) -> Vec<Box<dyn Node>> {
+        fn children(&self) -> Vec<NodeKind> {
             //TODO implement
             vec![]
         }

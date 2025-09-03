@@ -42,7 +42,9 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
             let child_kind = child.kind();
 
             match child_kind {
-                "use_directive" => build_use_directive(&mut ast, &child, code),
+                "use_directive" => {
+                    ast.add_use_directive(build_use_directive(&child, code));
+                }
                 _ => match build_definition(&child, code) {
                     Ok(definition) => ast.add_definition(definition),
                     Err(err) => {
@@ -57,7 +59,7 @@ pub fn build_ast(root: Node, code: &[u8]) -> anyhow::Result<SourceFile> {
     Ok(ast)
 }
 
-fn build_use_directive(parent: &mut SourceFile, node: &Node, code: &[u8]) {
+fn build_use_directive(node: &Node, code: &[u8]) -> Rc<UseDirective> {
     let location = get_location(node, code);
     let mut segments = None;
     let mut imported_types = None;
@@ -85,12 +87,7 @@ fn build_use_directive(parent: &mut SourceFile, node: &Node, code: &[u8]) {
         imported_types = Some(founded_imported_types);
     }
 
-    parent.add_use_directive(Rc::new(UseDirective::new(
-        imported_types,
-        segments,
-        from,
-        location,
-    )));
+    Rc::new(UseDirective::new(imported_types, segments, from, location))
 }
 
 fn build_spec_definition(node: &Node, code: &[u8]) -> Rc<SpecDefinition> {

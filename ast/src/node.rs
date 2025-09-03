@@ -5,6 +5,8 @@ use core::fmt;
 use std::fmt::{Display, Formatter};
 use std::{any::Any, cmp::Reverse};
 
+use crate::node_kind::NodeKind;
+
 #[derive(Clone, PartialEq, Eq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Location {
     pub offset_start: u32,
@@ -37,8 +39,8 @@ pub trait Node: Any + std::fmt::Debug {
             .unwrap_or_default()
             .to_string()
     }
-    fn children(&self) -> Vec<Box<dyn Node>>;
-    fn sorted_children(&self) -> Vec<Box<dyn Node>> {
+    fn children(&self) -> Vec<NodeKind>;
+    fn sorted_children(&self) -> Vec<NodeKind> {
         let mut children = self.children();
         children.sort_by_key(|c| Reverse(c.id()));
         children
@@ -59,31 +61,6 @@ pub enum Mutability {
     Immutable,
     Mutable,
     Constant,
-}
-
-#[macro_export]
-macro_rules! location {
-    ($item:expr) => {{
-        use syn::spanned::Spanned;
-        #[allow(clippy::cast_possible_truncation)]
-        $crate::node::Location {
-            offset_start: $item.span().byte_range().start as u32,
-            offset_end: $item.span().byte_range().end as u32,
-            source: $item.span().source_text().unwrap_or_default(),
-            start_line: $item.span().start().line as u32,
-            start_column: $item.span().start().column as u32,
-            end_line: $item.span().end().line as u32,
-            end_column: $item.span().end().column as u32,
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! source_code {
-    ($item:expr) => {{
-        use syn::spanned::Spanned;
-        $item.span().source_text().unwrap_or_default()
-    }};
 }
 
 #[macro_export]
@@ -125,39 +102,39 @@ macro_rules! ast_enum {
                 }
             }
 
-            // #[must_use]
-            // pub fn children(&self) -> Vec<NodeKind> {
-            //     match self {
-            //         $(
-            //             $name::$arm(_a) => {
-            //                 _a.children()
-            //             }
-            //         )*
-            //     }
-            // }
+            #[must_use]
+            pub fn children(&self) -> Vec<$crate::node_kind::NodeKind> {
+                match self {
+                    $(
+                        $name::$arm(_a) => {
+                            _a.children()
+                        }
+                    )*
+                }
+            }
         }
 
-        // impl From<&$name> for $crate::ast::node_type::NodeKind {
-        //     fn from(n: &$name) -> Self {
-        //         match n {
-        //             $(
-        //                 $name::$arm(a) => {
-        //                     $crate::ast::node_type::NodeKind::$name($name::$arm(a.clone()))
-        //                 }
-        //             )*
-        //         }
-        //     }
-        // }
+        impl From<&$name> for $crate::node_kind::NodeKind {
+            fn from(n: &$name) -> Self {
+                match n {
+                    $(
+                        $name::$arm(a) => {
+                            $crate::node_kind::NodeKind::$name($name::$arm(a.clone()))
+                        }
+                    )*
+                }
+            }
+        }
 
-        // impl From<$name> for $crate::ast::node_type::NodeKind {
-        //     fn from(n: $name) -> Self {
-        //         match n {
-        //             $(
-        //                 $name::$arm(inner) => $crate::ast::node_type::NodeKind::$name($name::$arm(inner.clone())),
-        //             )*
-        //         }
-        //     }
-        // }
+        impl From<$name> for $crate::node_kind::NodeKind {
+            fn from(n: $name) -> Self {
+                match n {
+                    $(
+                        $name::$arm(inner) => $crate::node_kind::NodeKind::$name($name::$arm(inner.clone())),
+                    )*
+                }
+            }
+        }
 
     };
 
