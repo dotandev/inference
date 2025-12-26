@@ -139,4 +139,6 @@ fn main() {
     }
 
     println!("cargo:rerun-if-changed={}", source_llc.display());
+    println!("cargo:rerun-if-changed={}", source_rust_lld.display());
+    println!("cargo:rerun-if-changed={}", source_lib_llvm.display());
 }
