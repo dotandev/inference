@@ -1,5 +1,4 @@
 [![Build](https://github.com/Inferara/inference/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Inferara/inference/actions/workflows/build.yml)
-[![Coverage](https://github.com/Inferara/inference/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/Inferara/inference/actions/workflows/coverage.yml)
 
 # 🌀 Inference Programming Language
 

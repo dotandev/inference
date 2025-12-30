@@ -27,20 +27,19 @@ jobs:
         run: cargo install cargo-audit
       - name: Build
         run: cargo build --release --verbose
-      - name: Test (excluding codegen)
-        run: "cargo test --verbose --lib -- --skip codegen::"
+      - name: Test
+        run: cargo test --verbose --lib
       - name: Clippy
         run: cargo clippy --verbose -- -D warnings
       - name: Audit
         run: cargo audit
-      - name: Test codegen
-        run: "cargo test --lib --verbose codegen::"
       - name: Prepare Artifact Package (Windows)
         if: matrix.os == 'Windows'
         run: |
           New-Item -ItemType Directory -Force -Path artifact\bin
           New-Item -ItemType Directory -Force -Path artifact\lib
           Copy-Item target\release\infc.exe artifact\
+          Copy-Item book\check_deps.ps1 artifact\
           Copy-Item target\release\bin\* artifact\bin\
           Copy-Item target\release\lib\* artifact\lib\
       - name: Prepare Artifact Package (Linux)
