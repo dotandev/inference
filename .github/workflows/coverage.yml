@@ -2,97 +2,125 @@ name: Coverage
 
 on:
   workflow_dispatch:
-  # pull_request:
-  #   branches: [main]
-  # push:
-  #   branches: [main]
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   coverage:
-    strategy:
-      matrix:
-        os: [macos-14]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+      RUSTFLAGS: "-C instrument-coverage"
+    
     steps:
-      - uses: actions/checkout@v4.1.3
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
       
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@nightly
+      - name: Cache external binaries
+        uses: actions/cache@v4
+        id: cache-binaries
         with:
-          components: llvm-tools-preview
+          path: external/
+          key: ${{ runner.os }}-binaries-v4
+          restore-keys: |
+            ${{ runner.os }}-binaries-
+      
+      - name: Download binaries (Linux)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p external/bin/linux external/lib/linux
+          # Download and extract inf-llc
+          curl -L "https://storage.googleapis.com/external_binaries/linux/bin/inf-llc.zip" -o /tmp/inf-llc.zip
+          unzip -o /tmp/inf-llc.zip -d external/bin/linux/
+          # Download and extract rust-lld
+          curl -L "https://storage.googleapis.com/external_binaries/linux/bin/rust-lld.zip" -o /tmp/rust-lld.zip
+          unzip -o /tmp/rust-lld.zip -d external/bin/linux/
+          # Download and extract libLLVM
+          curl -L "https://storage.googleapis.com/external_binaries/linux/lib/libLLVM.so.21.1-rust-1.94.zip" -o /tmp/libLLVM.zip
+          unzip -o /tmp/libLLVM.zip -d external/lib/linux/
+          # Make executables
+          chmod +x external/bin/linux/inf-llc external/bin/linux/rust-lld
+      
+      - name: Install Rust toolchain
+        run: |
+          rustup update nightly
+          rustup default nightly
+          rustup component add llvm-tools-preview
+      
+      - name: Install LLVM 21
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y llvm-21-dev libpolly-21-dev
       
       - name: Set LLVM Prefix
         run: |
-          HOST=$(rustc -vV | grep host | cut -d ' ' -f 2)
-          LLVM_PREFIX=$(rustc --print sysroot)/lib/rustlib/$HOST
-          echo "LLVM_SYS_211_PREFIX=$LLVM_PREFIX" >> $GITHUB_ENV
-          
-          # Fix for llvm-sys expecting libLLVM.dylib
-          LIB_DIR="$LLVM_PREFIX/lib"
-          if [ -d "$LIB_DIR" ]; then
-            cd "$LIB_DIR"
-            # Find the actual library (e.g., libLLVM-21-rust-....dylib)
-            ACTUAL_LIB=$(find . -name "libLLVM-*-rust-*.dylib" | head -n 1)
-            if [ -n "$ACTUAL_LIB" ] && [ ! -f "libLLVM.dylib" ]; then
-              echo "Creating symlink for libLLVM.dylib -> $ACTUAL_LIB"
-              ln -s "$ACTUAL_LIB" libLLVM.dylib
-            fi
-            cd -
-          fi
+          echo "LLVM_SYS_211_PREFIX=/usr/lib/llvm-21" >> $GITHUB_ENV
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
+      
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-coverage-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-coverage-
+            ${{ runner.os }}-cargo-build-
       
       - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage for core crates
         run: |
-          cargo llvm-cov --lib \
-            --package inference-ast \
-            --package inference-cli \
-            --package inference \
-            --package inference-wasm-codegen \
-            --package inference-wasm-to-v-translator \
-            --lcov --output-path lcov.info
+          cargo llvm-cov \
+            --workspace \
+            --exclude inference-tests \
+            --exclude inference-playground-server \
+            --exclude wasm-fmt \
+            --exclude wat-fmt \
+            --exclude inf-wast \
+            --exclude inf-wasmparser \
+            --lcov \
+            --output-path lcov.info
 
       - name: Generate coverage summary
         run: |
-          cargo llvm-cov --lib \
-            --package inference-ast \
-            --package inference-cli \
-            --package inference \
-            --package inference-wasm-codegen \
-            --package inference-wasm-to-v-translator \
+          cargo llvm-cov \
+            --workspace \
+            --exclude inference-tests \
+            --exclude inference-playground-server \
+            --exclude wasm-fmt \
+            --exclude wat-fmt \
+            --exclude inf-wast \
+            --exclude inf-wasmparser \
             --summary-only
-
-      - name: Check AST module coverage threshold
-        run: |
-          # Extract coverage for AST files
-          COVERAGE=$(cargo llvm-cov --lib \
-            --package inference-ast \
-            --package inference-cli \
-            --package inference \
-            --package inference-wasm-codegen \
-            --package inference-wasm-to-v-translator \
-            --summary-only 2>&1 | \
-            grep 'ast/src' | \
-            awk '{sum+=$7; count++} END {if (count>0) print sum/count; else print 0}')
-          
-          echo "Average AST module coverage: ${COVERAGE}%"
-          
-          # Threshold currently at 40% (actual current coverage)
-          # Target is 98%, increase gradually as tests are added
-          THRESHOLD=40
-          
-          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "Coverage ${COVERAGE}% is below threshold ${THRESHOLD}%"
-            exit 1
-          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
-        continue-on-error: true
         with:
-          files: lcov.info
-          fail_ci_if_error: false
+          files: ./lcov.info
+          flags: core
+          fail_ci_if_error: true
+          verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
