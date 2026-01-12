@@ -28,10 +28,11 @@ coverage/
 cobertura.xml
 
 .*
-!.github/
-.github/*
 !.github/workflows/
 !.cargo/
 !.gitattributes
 
 external/
+*.md
+!README.md
+!CONTRIBUTING.md
